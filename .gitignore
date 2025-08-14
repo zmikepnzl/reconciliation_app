@@ -7,14 +7,25 @@ __pycache__/
 venv/
 host_venv/
 
+# Backups and Data
+backups/
+app_backups/
+app_backbacks/
+*.dump
+
 # IDE / Editor folders
 .vscode/
 .idea/
 
 # Secret files / Environment variables
 .env
-*.env
 
 # Certificates - We are backing them up this time, but this is
 # how you would ignore them in the future. You can leave this commented out for now.
 # certs/
+
+# Secret files
+.env
+
+# Application generated files
+importer_app/config_exports/
