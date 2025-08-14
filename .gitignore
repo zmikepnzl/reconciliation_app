@@ -1,0 +1,25 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Python Virtual Environments
+.venv/
+venv/
+host_venv/
+
+# Backups and Data
+backups/
+app_backups/
+app_backbacks/
+*.dump
+
+# IDE / Editor folders
+.vscode/
+.idea/
+
+# Secret files
+.env
+*.env
+
+# Application generated files
+importer_app/config_exports/
