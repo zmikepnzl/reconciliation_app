@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Reconciliation App{% endblock %}</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.12);
+            max-width: 90%;
+            margin: 30px auto;
+        }
+        h1, h2, h3 {
+            color: #012169;
+        }
+
+        /* Form & Button Styles */
+        button, input[type="submit"] {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            color: white;
+            background-color: #002165;
+            transition: background-color 0.2s;
+        }
+        button:hover, input[type="submit"]:hover {
+            background-color: #013a99;
+        }
+        button.btn-danger {
+            background-color: #e74c3c;
+        }
+        button.btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        /* Flash Messages */
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .flash-messages li {
+            padding: 12px 18px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border: 1px solid transparent;
+        }
+        .flash-messages .success {
+            background-color: #e8f5e9;
+            border-color: #c8e6c9;
+            color: #1b5e20;
+        }
+        .flash-messages .error {
+            background-color: #ffebee;
+            border-color: #ffcdd2;
+            color: #b71c1c;
+        }
+        .flash-messages .info {
+            background-color: #e0f7fa;
+            border-color: #b2ebf2;
+            color: #006064;
+        }
+    </style>
+    {% block head_styles %}{% endblock %}
+</head>
+<body>
+    
+    {% include '_navbar.html' %}
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

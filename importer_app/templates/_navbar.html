@@ -1,0 +1,95 @@
+<div class="nav-bar">
+    <div class="nav-left">
+        <a href="{{ url_for('index') }}">
+            <img src="{{ url_for('static', filename='images/datacom_logo.png') }}" alt="Datacom Logo" class="nav-logo">
+        </a>
+    </div>
+
+    <div class="nav-right">
+        <a href="{{ url_for('customer.index') }}" class="{% if request.blueprint and 'customer' in request.blueprint %}active{% endif %}">Customers</a>
+
+        <div class="nav-item">
+            <span class="nav-link-heading {% if request.blueprint and ('supplier' in request.blueprint or 'link_items' in request.blueprint) %}active{% endif %}">Suppliers</span>
+            <div class="nav-submenu">
+                <a href="{{ url_for('supplier_setup.index') }}">Supplier Setup</a>
+                <a href="{{ url_for('link_items.bulk_match_ui') }}">Bulk Matcher</a>
+            </div>
+        </div>
+
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="{% if request.blueprint and 'admin' in request.blueprint %}active{% endif %}">Admin</a>
+    </div>
+</div>
+
+<style>
+    .nav-bar {
+        background: #fff;
+        border-bottom: 2px solid #012169;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 25px;
+        font-family: Arial, sans-serif;
+    }
+    .nav-logo {
+        height: 35px;
+        display: block;
+    }
+    .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .nav-bar a, .nav-link-heading {
+        display: inline-block;
+        height: 56px;
+        line-height: 56px;
+        font-size: 17px;
+        font-weight: bold;
+        color: #012169;
+        padding: 0 22px;
+        border-bottom: 3px solid transparent;
+        text-decoration: none;
+        transition: background .2s, border-bottom .2s;
+        white-space: nowrap;
+    }
+    .nav-bar a { cursor: pointer; }
+    .nav-link-heading { cursor: default; }
+    .nav-bar a:hover, .nav-item:hover .nav-link-heading {
+        border-bottom: 3px solid #012169;
+        background: #f2f6fc;
+        color: #002165;
+    }
+    .nav-bar a.active, .nav-link-heading.active {
+        border-bottom: 3px solid #012169;
+        background: #e6ecfa;
+        color: #002165;
+    }
+    .nav-item { position: relative; }
+    .nav-submenu {
+        display: none;
+        position: absolute;
+        top: 56px;
+        left: 0;
+        min-width: 100%;
+        background-color: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border: 1px solid #ddd;
+        border-top: none;
+        z-index: 100;
+    }
+    .nav-item:hover .nav-submenu { display: block; }
+    .nav-submenu a {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        height: auto;
+        line-height: 1.5;
+        padding: 10px 20px;
+        border-bottom: none;
+    }
+    .nav-submenu a:hover {
+        background-color: #f2f6fc;
+        border-bottom: none;
+    }
+</style>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Supplier Invoice Import{% endblock %}
+
+{% block head_styles %}
+<style>
+    /* New container to control page width */
+    .import-container {
+        max-width: 30%;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+    .form-row { margin-bottom: 14px; }
+    .form-row label { margin-right:12px; font-weight: bold; }
+    select, input[type="file"] {
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="import-container">
+    <h2>Supplier Invoice Imports</h2>
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('supplier_imports.upload_invoice') }}">
+      <div class="form-row">
+        <label for="supplier_id_select">Supplier:</label>
+        <select name="supplier_id_select" id="supplier_id_select" required onchange="window.location.href = '?supplier_id=' + this.value">
+          <option value="">-- Select Supplier --</option>
+          {% for opt in supplier_options %}
+            <option value="{{ opt.id }}" {% if opt.id|string == selected_supplier_id %}selected{% endif %}>{{ opt.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="mapping_name_select">Mapping:</label>
+        <select name="mapping_name_select" required>
+          <option value="">-- Select Mapping --</option>
+          {% for opt in mapping_options %}
+            <option value="{{ opt.name }}">{{ opt.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="invoice_file">Invoice CSV files:</label>
+        <input type="file" name="invoice_file" multiple required accept=".csv">
+      </div>
+      <div class="form-row">
+        <button type="submit" name="import_action" value="import">Upload & Import Invoices</button>
+      </div>
+    </form>
+</div>
+{% endblock %}

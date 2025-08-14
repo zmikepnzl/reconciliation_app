@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Match Items{% endblock %}
+
+{% block head_styles %}
+<style>
+    .filter-form-box { 
+        border: 1px solid #e0e0e0; 
+        border-radius: 8px; 
+        padding: 15px; 
+        background-color: #fcfcfc; 
+        margin-bottom: 15px; 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 15px; 
+        align-items: flex-end; 
+    }
+    .filter-form-box .filter-col { flex-grow: 1; min-width: 200px; }
+    .filter-form-box label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+    .filter-form-box select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    .results-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .results-table th, .results-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    .results-table th { background-color: #f2f6fc; }
+    .helper-text { 
+        background-color: #fff3cd; 
+        border: 1px solid #ffeeba; 
+        color: #856404; 
+        padding: 10px; 
+        border-radius: 4px; 
+        margin-bottom: 15px; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1>Bulk Match Invoice Items to Circuits</h1>
+    
+    <div class="helper-text">
+        <strong>Note:</strong> This tool finds the first potential match for unlinked invoice items based on the billing reference. Review the matches carefully before linking.
+    </div>
+    
+    <form action="{{ url_for('link_items.bulk_match_logic') }}" method="POST" class="filter-form-box">
+        <div class="filter-col">
+            <label for="supplier-select">Supplier:</label>
+            <select name="supplier" id="supplier-select" required>
+                <option value="">-- Select a Supplier --</option>
+                {% for s in supplier_options %}
+                    {# REFACTOR: Use .name instead of .Name #}
+                    <option value="{{ s.name }}" {% if s.name == supplier %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-col">
+            <label for="account-number-select">Account Number:</label>
+            <select name="account_number" id="account-number-select">
+                <option value="">-- All Accounts --</option>
+            </select>
+        </div>
+        <div class="filter-col">
+            <label for="customer-select">Customer:</label>
+            <select name="customer_filter" id="customer-select" required>
+                <option value="">-- Select a Customer --</option>
+                {% for c in customer_options %}
+                    {# REFACTOR: Use .id and .name #}
+                    <option value="{{ c.id }}" {% if c.id|string == customer_filter %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-col">
+            <button type="submit">Find Matches</button>
+        </div>
+    </form>
+
+    {% if matches is not none %}
+        <h2>Matching Results</h2>
+        {% if matches %}
+            <form action="{{ url_for('link_items.bulk_link_logic') }}" method="POST">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice Billing Reference</th>
+                            <th>Matched Circuit ID</th>
+                            <th style="text-align: center;">Select All <br><input type="checkbox" id="select-all"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for match in matches %}
+                        <tr>
+                            {# REFACTOR: Use new dictionary keys from the SQL query #}
+                            <td>{{ match.billing_reference }}</td>
+                            <td>{{ match.circuit_identifier }}</td>
+                            <td style="text-align: center;">
+                                <input type="checkbox" name="link_selection" value="{{ match.item_id }}_{{ match.circuit_id }}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <br>
+                <button type="submit">Link Selected Items</button>
+            </form>
+        {% else %}
+            <p>No new matches found for the selected filters.</p>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const supplierSelect = document.getElementById('supplier-select');
+        const accountNumberSelect = document.getElementById('account-number-select');
+        const selectedSupplier = "{{ supplier or '' }}";
+        const selectedAccountNumber = "{{ account_number or '' }}";
+
+        function loadAccountNumbers(supplierName, callback) {
+            accountNumberSelect.innerHTML = '<option value="">-- All Accounts --</option>';
+            if (supplierName) {
+                fetch(`/link_items/get_account_numbers_by_supplier?supplier_name=${encodeURIComponent(supplierName)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(accountNum => {
+                            const option = document.createElement('option');
+                            option.value = accountNum;
+                            option.textContent = accountNum;
+                            if (accountNum === selectedAccountNumber) {
+                                option.selected = true;
+                            }
+                            accountNumberSelect.appendChild(option);
+                        });
+                        if (callback) callback();
+                    });
+            } else {
+                if (callback) callback();
+            }
+        }
+
+        supplierSelect.addEventListener('change', () => {
+            loadAccountNumbers(supplierSelect.value);
+        });
+
+        // Load account numbers on page load if a supplier is already selected
+        if (selectedSupplier) {
+            loadAccountNumbers(selectedSupplier);
+        }
+
+        const selectAllCheckbox = document.getElementById('select-all');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                document.querySelectorAll('input[name="link_selection"]').forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

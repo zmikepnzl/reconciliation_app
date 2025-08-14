@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Tools{% endblock %}
+
+{% block head_styles %}
+<style>
+    .form-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 20px; }
+    h4 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    h5 { margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .button-group { margin-top: 15px; }
+    .btn-danger { background-color: #e74c3c; }
+    .btn-danger:hover { background-color: #c0392b; }
+    .export-buttons-group { display: flex; gap: 10px; margin-top: 15px; }
+    .list-actions { margin-top: 10px; margin-bottom: 10px; }
+    .file-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .file-table th, .file-table td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+    .file-table th { background-color: #f2f2f2; font-weight: bold; }
+    .file-table tr:hover { background-color: #f5f5f5; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h2>Admin Tools</h2>
+
+    <p style="color: #555; margin-bottom: 20px;">
+        Use these tools to manage the application's data. Be careful, these actions cannot be undone.
+    </p>
+    
+    <hr>
+    
+    <div class="form-section">
+        <h4>Schema & Data Management</h4>
+        <p style="font-size: 0.9em; color: #777;">These tools are for managing the database schema and data. Use with extreme caution.</p>
+        <div class="button-group">
+            <form action="{{ url_for('admin.update_db_route') }}" method="POST" style="display: inline-block;">
+                <button type="submit" onclick="return confirm('WARNING: This will perform a data-only backup, wipe and re-initialize the schema, and restore the data. Continue?');">Update DB Schema</button>
+            </form>
+            <form action="{{ url_for('admin.init_db_route') }}" method="POST" style="display: inline-block;">
+                <button type="submit" class="btn-danger" onclick="return confirm('WARNING: This will DESTROY ALL data in the database and create a fresh schema. Are you absolutely sure you want to proceed?');">Wipe & Initialize DB</button>
+            </form>
+        </div>
+    </div>
+
+    <hr>
+    
+    <div class="form-section">
+        <h4>Export Configuration</h4>
+        <p style="font-size: 0.9em; color: #777;">Export import mapping rules and the current database schema to files for backup or transfer.</p>
+        <div class="export-buttons-group">
+            <form action="{{ url_for('admin.export_mappings_csv') }}" method="GET" style="display: inline-block;">
+                <button type="submit">Export All Mappings (CSV)</button>
+            </form>
+            <form action="{{ url_for('admin.export_mappings_json') }}" method="GET" style="display: inline-block;">
+                <button type="submit">Export All Mappings (JSON)</button>
+            </form>
+            <form action="{{ url_for('admin.export_db_schema_route') }}" method="POST" style="display: inline-block;">
+                <button type="submit">Export Schema</button>
+            </form>
+        </div>
+
+        <hr>
+
+        <h5>Available Mapping & Schema Exports</h5>
+        <form id="mapping-export-delete-form" action="{{ url_for('admin.delete_selected_config_exports') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the selected export files? This action cannot be undone.');">
+            <table class="file-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">
+                            <input type="checkbox" id="select-all-mapping-exports" class="select-all-checkbox" data-target="mapping-export-item">
+                            <label for="select-all-mapping-exports">All</label>
+                        </th>
+                        <th style="width: 95%;">File Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if config_export_files %}
+                        {% for filename in config_export_files %}
+                        <tr>
+                            <td><input type="checkbox" name="filenames[]" value="{{ filename }}" class="mapping-export-item"></td>
+                            <td>
+                                <a href="{{ url_for('admin.download_config_export', filename=filename) }}">
+                                    {{ filename }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="2"><p style="color: #777;">No mapping or schema exports found.</p></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% if config_export_files %}
+                <div class="list-actions">
+                    <button type="submit" class="btn-danger">Delete Selected Exports</button>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+    
+    <hr>
+
+    <div class="form-section">
+        <h4>Mapping Metadata Management</h4>
+        <p style="font-size: 0.9em; color: #777;">Define and manage the core rules and properties for all import mappings.</p>
+        <div class="button-group">
+            <a href="{{ url_for('mapping_manager.mapping_metadata_admin') }}" class="button">Go to Mapping Metadata Admin</a>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="form-section">
+        <h4>Run Custom SQL Script</h4>
+        <p style="font-size: 0.9em; color: #777;">Upload and execute a custom SQL script directly against the database. Use with extreme caution!</p>
+        <form action="{{ url_for('admin.run_sql_script') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirm('WARNING: This will execute the uploaded SQL file directly against your database. Are you absolutely sure you want to proceed?');">
+            <input type="file" name="sql_file" accept=".sql" required>
+            <button type="submit">Execute SQL Script</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <div class="form-section">
+        <h4>Database Backups & Restore</h4>
+        <p style="font-size: 0.9em; color: #777;">Manage full PostgreSQL database backups. These backups contain all your application data.</p>
+        <div class="button-group">
+            <form action="{{ url_for('admin.backup_full_db') }}" method="POST" style="display: inline-block;">
+                <button type="submit">Create Full DB Backup</button>
+            </form>
+        </div>
+        <h5>Restore Database Backup</h5>
+        <p style="font-size: 0.9em; color: #777;">Upload a `.sql` file to restore the entire database from a backup. **The uploaded SQL file will be executed directly, overwriting all existing data.**</p>
+        <form action="{{ url_for('admin.restore_full_db') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirm('WARNING: This will overwrite ALL data and schema. Are you absolutely sure you want to proceed?');">
+            <input type="file" name="backup_file" accept=".sql" required>
+            <button type="submit" class="btn-danger">Restore Full DB Backup</button>
+        </form>
+        <h5>Available Database Backups</h5>
+        <form id="db-backup-delete-form" action="{{ url_for('admin.delete_selected_db_backups') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the selected database backup files? This action cannot be undone.');">
+            <table class="file-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">
+                            <input type="checkbox" id="select-all-db-backups" data-target="db-backup-item">
+                            <label for="select-all-db-backups">All</label> 
+                        </th>
+                        <th style="width: 95%;">File Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if db_backup_files %}
+                        {% for filename in db_backup_files %}
+                        <tr>
+                            <td><input type="checkbox" name="filenames[]" value="{{ filename }}" class="db-backup-item"></td>
+                            <td>
+                                <a href="{{ url_for('admin.download_backup', filename=filename) }}">
+                                    {{ filename }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="2"><p style="color: #777;">No full database backups found.</p></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% if db_backup_files %}
+                <div class="list-actions">
+                    <button type="submit" class="btn-danger">Delete Selected DB Backups</button>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+    
+    <hr>
+
+    <div class="form-section">
+        <h4>Full Application Backup & Restore</h4>
+        <p style="font-size: 0.9em; color: #777;">Create a full backup of the entire application, including code, static files, and a database dump.</p>
+        <div class="button-group">
+            <form action="{{ url_for('admin.backup_full_app') }}" method="POST" style="display: inline-block;">
+                <button type="submit">Create Full App Backup</button>
+            </form>
+        </div>
+        <h5>Restore Application Backup</h5>
+        <p style="font-size: 0.9em; color: #777;">Upload a `.zip` file to restore the entire application. **This is a high-risk manual process.**</p>
+        <form action="{{ url_for('admin.restore_full_app') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirm('WARNING: This feature is a placeholder and will not perform an automated restore. Are you sure you want to proceed?');">
+            <input type="file" name="backup_file" accept=".zip" required>
+            <button type="submit" class="btn-danger">Restore Full App Backup</button>
+        </form>
+        <h5>Available Application Backups</h5>
+        <form id="app-backup-delete-form" action="{{ url_for('admin.delete_selected_app_backups') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the selected application backup files? This action cannot be undone.');">
+            <table class="file-table">
+                 <thead>
+                    <tr>
+                        <th style="width: 5%;">
+                            <input type="checkbox" id="select-all-app-backups" data-target="app-backup-item">
+                            <label for="select-all-app-backups">All</label>
+                        </th>
+                        <th style="width: 95%;">File Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if app_backup_files %}
+                        {% for filename in app_backup_files %}
+                        <tr>
+                            <td><input type="checkbox" name="filenames[]" value="{{ filename }}" class="app-backup-item"></td>
+                            <td>
+                                <a href="{{ url_for('admin.download_app_backup', filename=filename) }}">
+                                    {{ filename }}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="2"><p style="color: #777;">No full application backups found.</p></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% if app_backup_files %}
+                <div class="list-actions">
+                    <button type="submit" class="btn-danger">Delete Selected App Backups</button>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input[id^="select-all-"]').forEach(selectAllCheckbox => {
+            selectAllCheckbox.addEventListener('change', function() {
+                const targetClass = this.getAttribute('data-target');
+                document.querySelectorAll('.' + targetClass).forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+        });
+        
+        document.querySelectorAll('form[id$="-delete-form"]').forEach(form => {
+            form.addEventListener('submit', function(event) {
+                const selectedCheckboxes = form.querySelectorAll('input[name="filenames[]"]:checked');
+                if (selectedCheckboxes.length === 0) {
+                    event.preventDefault();
+                    alert('Please select at least one file to delete.');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

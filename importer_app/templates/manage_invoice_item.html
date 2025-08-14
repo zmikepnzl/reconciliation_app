@@ -1,0 +1,285 @@
+{% extends "base_modal.html" %}
+
+{% block title %}
+    Manage Invoice Item: {{ item.billing_reference }}
+{% endblock %}
+
+{% block head_styles %}
+<style>
+    .form-container { padding: 10px; }
+    .main-form-grid { display: grid; grid-template-columns: 50% 50%; gap: 20px; }
+    .form-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
+    h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    textarea { min-height: 80px; }
+    .button-group { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px;}
+    .read-only-field { background-color: #e9ecef; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; }
+    .checkbox-group input { width: auto; }
+    .history-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .history-table th, .history-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .history-table th { background-color: #f2f6fc; }
+    .link-pill-container { display: flex; flex-wrap: wrap; gap: 5px; }
+    .link-pill { background-color: #e9ecef; border-radius: 12px; padding: 4px 10px; font-size: 0.9em; display: inline-flex; align-items: center; border: 1px solid #ced4da; }
+    .unlink-button { background: none; border: none; color: #c82333; font-weight: bold; cursor: pointer; margin-left: 6px; padding: 0 4px; font-size: 1.1em; }
+    .search-section { border-top: 1px solid #ddd; margin-top: 20px; padding-top: 20px; }
+    .search-results { max-height: 300px; overflow-y: auto; border: 1px solid #ccc; margin-top: 10px; border-radius: 4px; }
+    .search-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .search-item:hover { background-color: #f1f1f1; }
+    .link-button { background-color: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Manage Item: <span style="color: #002169;">{{ item.billing_reference }}</span></h1>
+
+    <form id="save-item-form">
+        <input type="hidden" name="item_id" value="{{ item.id }}">
+        <div class="main-form-grid">
+            <!-- Left Column -->
+            <div>
+                <div class="form-section">
+                    <h3>Invoice Item Details</h3>
+                    <div class="form-group">
+                        <label>Supplier:</label>
+                        <input type="text" value="{{ supplier.name or 'N/A' }}" class="read-only-field" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Account Number:</label>
+                        <input type="text" value="{{ account.account_number or 'N/A' }}" class="read-only-field" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="contract_start_date">Contract Start Date:</label>
+                        <input type="date" id="contract_start_date" name="contract_start_date" value="{{ item.contract_start_date.strftime('%Y-%m-%d') if item.contract_start_date else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="contract_end_date">Contract End Date:</label>
+                        <input type="date" id="contract_end_date" name="contract_end_date" value="{{ item.contract_end_date.strftime('%Y-%m-%d') if item.contract_end_date else '' }}">
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Invoice Line History</h3>
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in invoice_lines %}
+                            <tr>
+                                <td>{{ line.invoice_date.strftime('%Y-%m-%d') if line.invoice_date else 'N/A' }}</td>
+                                <td>{{ line.description or 'N/A' }}</td>
+                                <td>{{ '$%.2f'|format(line.total_amount) if line.total_amount is not none else 'N/A' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3">No invoice line history found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <div class="form-section">
+                    <h3>Linked Circuits</h3>
+                    <div class="link-pill-container" id="linked-circuits-container">
+                        {% for circuit in linked_circuits %}
+                            <span class="link-pill" id="pill-circuit-{{ circuit.id }}">
+                                {{ circuit.circuit_id }} ({{ circuit.customer_name }})
+                                <button type="button" class="unlink-button" data-circuit-id="{{ circuit.id }}" title="Unlink this circuit">&times;</button>
+                            </span>
+                        {% else %}
+                            <p id="no-links-message">No circuits are currently linked to this item.</p>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="search-section">
+                        <h4>Link a New Circuit</h4>
+                        <div class="form-group">
+                            <label for="circuit-search-input">Search by Circuit ID or Customer:</label>
+                            <input type="text" id="circuit-search-input" placeholder="e.g., CCT-1234 or Customer Name">
+                        </div>
+                        <div class="search-results" id="search-results">
+                            <p style="padding: 10px; color: #777;">Start typing to search for circuits to link.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODIFIED: Moved this section to the right column -->
+                <div class="form-section">
+                    <h3>Review & Audit</h3>
+                    <div class="form-group">
+                        <label>Last Audit Date:</label>
+                        <input type="text" id="audit_date_display" value="{{ item.audit_date.strftime('%Y-%m-%d') if item.audit_date else 'Not Audited' }}" class="read-only-field" readonly>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="review_flag" name="review_flag" {% if item.review_flag %}checked{% endif %}>
+                        <label for="review_flag">Flag for Review</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notes:</label>
+                        <textarea id="notes" name="notes">{{ item.notes or '' }}</textarea>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" class="button btn-danger" id="clear-audit-button">Clear Audit Date</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-group" style="justify-content: flex-end;">
+            <button type="submit" class="button">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const itemId = '{{ item.id }}';
+    const form = document.getElementById('save-item-form');
+    const searchInput = document.getElementById('circuit-search-input');
+    const searchResultsDiv = document.getElementById('search-results');
+    const linkedCircuitsContainer = document.getElementById('linked-circuits-container');
+    const noLinksMessage = document.getElementById('no-links-message');
+    const clearAuditButton = document.getElementById('clear-audit-button');
+    let searchTimeout;
+
+    // --- Save Form Logic ---
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        data.review_flag = document.getElementById('review_flag').checked;
+
+        fetch(`/supplier_setup/api/save_invoice_item/${itemId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.status === 'success') {
+                alert('Item saved successfully!');
+                window.parent.closeModal(); // Close modal on success
+            } else {
+                alert(`Error: ${result.message}`);
+            }
+        }).catch(err => console.error('Save Error:', err));
+    });
+
+    // --- Clear Audit Date Logic ---
+    clearAuditButton.addEventListener('click', function() {
+        if (!confirm('Are you sure you want to clear the audit date for this item?')) return;
+        
+        fetch(`/supplier_setup/api/clear_item_audit_date`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: itemId })
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.status === 'success') {
+                document.getElementById('audit_date_display').value = 'Not Audited';
+                alert('Audit date cleared.');
+            } else {
+                alert(`Error: ${result.message}`);
+            }
+        }).catch(err => console.error('Clear Audit Error:', err));
+    });
+
+    // --- Unlink Logic ---
+    linkedCircuitsContainer.addEventListener('click', function(event) {
+        if (event.target.classList.contains('unlink-button')) {
+            if (!confirm('Are you sure you want to unlink this circuit?')) return;
+            const circuitId = event.target.dataset.circuitId;
+
+            fetch('/supplier_setup/api/unlink_circuit_from_item', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoice_item_id: itemId, circuit_id: circuitId })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    document.getElementById(`pill-circuit-${circuitId}`).remove();
+                    if (linkedCircuitsContainer.children.length === 1 && noLinksMessage) { // Check for p tag
+                        noLinksMessage.style.display = 'block';
+                    }
+                } else {
+                    alert(`Unlink failed: ${result.message}`);
+                }
+            }).catch(err => console.error('Unlink Error:', err));
+        }
+    });
+
+    // --- Search and Link Logic ---
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const query = searchInput.value.trim();
+            if (query.length < 2) {
+                searchResultsDiv.innerHTML = '<p style="padding: 10px; color: #777;">Enter at least 2 characters to search.</p>';
+                return;
+            }
+
+            fetch(`/supplier_setup/api/search_circuits?query=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(circuits => {
+                searchResultsDiv.innerHTML = '';
+                if (circuits.length === 0) {
+                    searchResultsDiv.innerHTML = '<p style="padding: 10px; color: #777;">No circuits found.</p>';
+                } else {
+                    circuits.forEach(circuit => {
+                        const div = document.createElement('div');
+                        div.classList.add('search-item');
+                        div.innerHTML = `
+                            <span>${circuit.circuit_id} (${circuit.customer_name})</span>
+                            <button type="button" class="link-button" data-circuit-id="${circuit.id}">Link</button>
+                        `;
+                        searchResultsDiv.appendChild(div);
+                    });
+                }
+            }).catch(err => console.error('Search Error:', err));
+        }, 500);
+    });
+
+    searchResultsDiv.addEventListener('click', function(event) {
+        if (event.target.classList.contains('link-button')) {
+            const circuitId = event.target.dataset.circuitId;
+            
+            fetch('/supplier_setup/api/link_circuit_to_item', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoice_item_id: itemId, circuit_id: circuitId })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    const newPill = document.createElement('span');
+                    newPill.classList.add('link-pill');
+                    newPill.id = `pill-circuit-${circuitId}`;
+                    const circuitInfo = event.target.previousElementSibling.textContent;
+                    newPill.innerHTML = `${circuitInfo} <button type="button" class="unlink-button" data-circuit-id="${circuitId}" title="Unlink this circuit">&times;</button>`;
+                    linkedCircuitsContainer.appendChild(newPill);
+                    if(noLinksMessage) noLinksMessage.style.display = 'none';
+                    searchInput.value = '';
+                    searchResultsDiv.innerHTML = '<p style="padding: 10px; color: #777;">Start typing to search...</p>';
+                } else {
+                    alert(`Link failed: ${result.message}`);
+                }
+            }).catch(err => console.error('Link Error:', err));
+        }
+    });
+});
+</script>
+{% endblock %}

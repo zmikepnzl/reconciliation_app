@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Mapping Metadata Admin{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-container { max-width: 95%; margin: 0 auto; }
+    .section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
+    h1 { font-size: 2em; }
+    h3 { font-size: 1.4em; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9em; table-layout: fixed; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
+    th { background-color: #f2f6fc; text-align: center; }
+    input, select, textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    input[type="checkbox"] { width: auto; }
+    input[readonly] { background-color: #e9ecef; cursor: not-allowed; }
+    select[multiple] { height: 70px; }
+    .button-bar { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    .super-admin-col { display: none; }
+    .source-details p { margin: 4px 0; }
+    .hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="button" style="background-color: #6c757d; margin-bottom: 20px; display: inline-block;">&larr; Back to Admin</a>
+    <h1>Mapping Metadata Admin</h1>
+
+    <div class="section" style="display: flex; align-items: center; justify-content: flex-end;">
+        <input type="checkbox" id="chk-super-admin">
+        <label for="chk-super-admin" style="font-weight: bold; color: #dc3545; margin-left: 5px;">Super Admin Override</label>
+    </div>
+
+    <form id="metadata-form" onsubmit="return false;">
+        <div class="section">
+            <h3>Base Mapping Rules</h3>
+            <table class="rule-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Rule Name</th>
+                        <th style="width: 12%;">Field Role</th>
+                        <th style="width: 15%;">Destination Field</th>
+                        <th style="width: 12%;">Source Types</th>
+                        <th>Source Details</th>
+                        <th style="width: 15%;">Allowed Transformations</th>
+                        <th style="width: 5%;">Required</th>
+                        <th style="width: 5%;">Hidden</th> <th class="super-admin-col" style="width: 5%;">Is Base</th>
+                        <th style="width: 8%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="base-rules-body"></tbody>
+            </table>
+            <div class="button-bar">
+                <button type="button" id="btn-add-base" disabled>Add New Base Rule</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Additional Mapping Rules</h3>
+            <table class="rule-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Rule Name</th>
+                        <th style="width: 12%;">Field Role</th>
+                        <th style="width: 15%;">Destination Field</th>
+                        <th style="width: 12%;">Source Types</th>
+                        <th>Source Details</th>
+                        <th style="width: 15%;">Allowed Transformations</th>
+                        <th style="width: 5%;">Required</th>
+                        <th style="width: 5%;">Hidden</th> <th class="super-admin-col" style="width: 5%;">Is Base</th>
+                        <th style="width: 8%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="additional-rules-body"></tbody>
+            </table>
+            <div class="button-bar">
+                <button type="button" id="btn-add-additional">Add New Rule</button>
+            </div>
+        </div>
+
+        <div class="button-bar">
+            <button type="button" id="btn-save-all">Save All Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const DB_SCHEMA = {{ db_schema|tojson }};
+    // ... (rest of the script variables) ...
+    
+    function createRow(rule) {
+        const row = document.createElement('tr');
+        row.dataset.ruleId = rule.id || `new_${Date.now()}`;
+        
+        const fieldRolesHtml = `<select name="field_role" onchange="updateDestinationFields(this)">${ALL_FIELD_ROLES.map(role => `<option value="${role}" ${rule.field_role === role ? 'selected' : ''}>${role}</option>`).join('')}</select>`;
+        const sourceTypesHtml = `<select name="source_type_options" multiple onchange="updateRowUI(this.closest('tr'))">${ALL_SOURCE_TYPES.map(type => `<option value="${type}" ${rule.source_type_options?.includes(type) ? 'selected' : ''}>${type}</option>`).join('')}</select>`;
+        const transformationsHtml = `<select name="default_transformation" multiple>${ALL_TRANSFORMATIONS.map(t => `<option value="${t}" ${rule.default_transformation?.includes(t) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+
+        // ADDED is_hidden checkbox to this template literal
+        row.innerHTML = `
+            <td><input type="text" name="rule_name" value="${rule.rule_name || ''}"></td>
+            <td>${fieldRolesHtml}</td>
+            <td><select name="destination_field" class="destination-field-select"></select></td>
+            <td>${sourceTypesHtml}</td>
+            <td class="source-details">
+                <div class="link-details hidden">
+                    <p>Table: <select name="link_table_lookup" class="link-table-select" onchange="updateFieldDropdown(this)"></select></p>
+                    <p>Field: <select name="link_field_lookup" class="link-field-select"></select></p>
+                </div>
+                <div class="choice-details hidden">
+                    <p>Choices (comma-separated):</p>
+                    <textarea name="custom_options" placeholder="e.g., Choice A,Choice B">${rule.custom_options || ''}</textarea>
+                </div>
+            </td>
+            <td>${transformationsHtml}</td>
+            <td style="text-align: center;"><input type="checkbox" name="is_required" ${rule.is_required ? 'checked' : ''}></td>
+            <td style="text-align: center;"><input type="checkbox" name="is_hidden" ${rule.is_hidden ? 'checked' : ''}></td>
+            <td class="super-admin-col" style="text-align: center;"><input type="checkbox" name="is_base_rule" ${rule.is_base_rule ? 'checked' : ''}></td>
+            <td><button type="button" class="btn-delete-row" onclick="deleteRow(this)">Delete</button></td>
+        `;
+        return row;
+    }
+    
+    // ... (rest of the JavaScript functions) ...
+</script>
+{% endblock %}

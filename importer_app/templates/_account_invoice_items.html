@@ -1,0 +1,27 @@
+<h4>Invoice Items</h4>
+{% if items %}
+<table>
+    <thead>
+        <tr>
+            <th>Billing Reference</th>
+            <th>Audit Date</th>
+            <th>Is Linked?</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item.billing_reference }}</td>
+            <td>{{ item.audit_date.strftime('%Y-%m-%d') if item.audit_date else 'N/A' }}</td>
+            <td>{{ 'Yes' if item.is_linked else 'No' }}</td>
+            <td>
+                <a href="{{ url_for('supplier_setup.get_invoice_lines', item_id=item.id) }}">View Lines</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No invoice items found for this account.</p>
+{% endif %}

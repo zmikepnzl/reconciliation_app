@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Zeus Imports{% endblock %}
+
+{% block head_styles %}
+<style>
+    .form-section { 
+        border: 1px solid #ddd; 
+        padding: 20px; 
+        border-radius: 8px; 
+        margin-bottom: 25px; 
+        background-color: #f9f9f9;
+    }
+    .form-section h2 {
+        margin-top: 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label { 
+        display: block; 
+        margin-bottom: 5px; 
+        font-weight: bold; 
+    }
+    input[type="file"] { 
+        width: 100%; 
+        padding: 8px; 
+        border: 1px solid #ddd; 
+        border-radius: 4px; 
+        box-sizing: border-box;
+    }
+    .action-section { 
+        text-align: center; 
+        margin-top: 20px; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1>Zeus Data Imports</h1>
+    <p style="color: #555; margin-bottom: 25px;">
+        Use this page to import Service Catalog Items (SCIs) and Circuit data from Zeus CSV exports. After importing, you can run the linking process to automatically associate circuits with their corresponding SCIs.
+    </p>
+
+    <div class="form-section">
+      <h2>1. Import Service Catalog Items (SCIs)</h2>
+      <form action="{{ url_for('zeus_imports.upload_sci') }}" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="sci_file">SCI CSV File:</label>
+          <input type="file" name="sci_file" id="sci_file" accept=".csv" required />
+        </div>
+        <button type="submit">Upload and Import SCI</button>
+      </form>
+    </div>
+
+    <div class="form-section">
+      <h2>2. Import Circuit Data</h2>
+      <form action="{{ url_for('zeus_imports.upload_circuit') }}" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="circuit_file">Circuit Data CSV File:</label>
+          <input type="file" name="circuit_file" id="circuit_file" accept=".csv" required />
+        </div>
+        <button type="submit">Upload and Import Circuits</button>
+      </form>
+    </div>
+
+    <div class="form-section" style="background-color: #eef3f8;">
+      <h2>3. Link SCIs to Circuits</h2>
+      <p style="font-size: 0.9em; color: #555;">
+        After importing both SCIs and circuits, run this process to automatically link them based on matching service names and customers.
+      </p>
+      <form action="{{ url_for('zeus_imports.link_sci') }}" method="post" class="action-section">
+        <button type="submit">Link SCIs to Circuits</button>
+      </form>
+    </div>
+{% endblock %}

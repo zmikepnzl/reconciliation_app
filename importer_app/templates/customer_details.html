@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Circuits{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .filters-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #f2f6fc; }
+    .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+    .filter-group label { font-weight: bold; }
+    .filter-group select, .filter-group input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    .list-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    th { background-color: #e6ecfa; }
+    .actions a, .actions button { text-decoration: none; margin-right: 15px; font-weight: bold; color: #002169; background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;}
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover { background-color: #e6f7ff; }
+
+    /* Column Widths to prevent wrapping and give space */
+    .table-col-checkbox { width: 3%; } /* Adjusted width */
+    .table-col-circuit-id { width: 9%; } /* Adjusted width */
+    .table-col-site { width: 9%; } /* Adjusted width */
+    .table-col-telco { width: 7%; } /* Adjusted width */
+    .table-col-status { width: 5%; } /* Adjusted width */
+    .table-col-audit-date { width: 7%; } /* Adjusted width */
+    .table-col-sci { width: 12%; } /* Adjusted width for SCI */
+    .table-col-cost { width: 5%; } /* Adjusted width */
+    .table-col-sell { width: 5%; } /* Adjusted width */
+    .table-col-invoice-total { width: 5%; } /* Adjusted width */
+    .table-col-profit-loss { width: 5%; } /* Adjusted width */
+    .table-col-linked-items { width: 9%; } /* Adjusted width */
+    .table-col-review-flag { width: 4%; } /* Adjusted width */
+    /* New widths for individual action columns */
+    .table-col-override { width: 4%; text-align: center; }
+    .table-col-cost-action { width: 4%; text-align: center; }
+    .table-col-manual-audit { width: 4%; text-align: center; }
+
+
+    .audit-ok { border-left: 5px solid #4CAF50; }
+    .no-invoice { border-left: 5px solid #d32f2f; }
+    .profit-positive { background-color: #e8f5e9; }
+    .profit-neutral { background-color: #fff3e0; }
+    .profit-negative { background-color: #ffebee; }
+    .text-center { text-align: center; }
+    .price-cell { text-align: right; }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 1200px;
+        height: 90vh;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        position: relative;
+    }
+    .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        background: none;
+    }
+    .modal-iframe {
+        width: 100%;
+        height: calc(100% - 30px);
+        border: none;
+    }
+
+    .notes-modal-content {
+        max-width: 600px;
+        height: auto;
+    }
+    .notes-modal-content textarea {
+        width: 100%;
+        min-height: 200px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        margin-top: 10px;
+    }
+
+    .color-key {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        font-size: 0.9em;
+    }
+    .key-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .color-box {
+        width: 15px;
+        height: 15px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    .status-border-key {
+        width: 10px;
+        height: 15px;
+        background-color: #fff;
+    }
+    .audit-ok-key { border-left: 5px solid #4CAF50; }
+    .no-invoice-key { border-left: 5px solid #d32f2f; }
+
+    .actions-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 15px;
+        margin-top: 15px;
+    }
+    .button.auto-audit {
+         background-color: #28a745;
+    }
+    .button.auto-audit:hover {
+         background-color: #218838;
+    }
+    .button.export-button {
+        background-color: #17a2b8;
+    }
+    .button.export-button:hover {
+        background-color: #138496;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Circuits for: <span style="color: #002169;">{{ customer.name }}</span></h1>
+    <button class="button" onclick="openEditModal('{{ url_for('customer.manage_circuit', customer_id=customer.id) }}')">Add New Circuit</button>
+</div>
+
+<div class="filters-section">
+    <form method="GET" action="{{ url_for('customer.customer_details', customer_id=customer.id) }}">
+        <div class="filter-group">
+            <label for="site_filter">Site:</label>
+            <input list="sites-list" id="site_filter_input" name="site" value="{{ site_filter }}" placeholder="Search Sites">
+            <datalist id="sites-list">
+                {% for site in sites %}
+                <option value="{{ site }}">
+                {% endfor %}
+            </datalist>
+
+            <label for="circuit_id_filter">Circuit ID:</label> {# NEW: Circuit ID search #}
+            <input type="text" id="circuit_id_filter" name="circuit_id" value="{{ circuit_id_filter }}" placeholder="Search Circuit ID">
+
+            <label for="telco_filter">Telco:</label>
+            <select name="telco" id="telco_filter" multiple size="3"> {# Changed to multi-select #}
+                <option value="">All Telcos</option> {# Keep "All Telcos" option for multi-select #}
+                {% for telco in telcos %}
+                <option value="{{ telco }}" {% if telco in telco_filter %}selected{% endif %}>{{ telco }}</option>
+                {% endfor %}
+            </select>
+            
+            <label for="supplier_filter">Supplier:</label>
+            <select name="supplier" id="supplier_filter">
+                <option value="">All Suppliers</option>
+                {% for supplier_name in suppliers %}
+                <option value="{{ supplier_name }}" {% if supplier_name == supplier_filter %}selected{% endif %}>{{ supplier_name }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="status_filter">Status:</label>
+            <select name="status" id="status_filter">
+                <option value="All" {% if status_filter == 'All' %}selected{% endif %}>All Statuses</option>
+                {% for status in statuses %}
+                <option value="{{ status }}" {% if status == status_filter %}selected{% endif %}>{{ status }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="sci_link_filter">SCI Link Status:</label>
+            <select name="sci_linked" id="sci_link_filter">
+                <option value="" {% if sci_linked_filter == '' %}selected{% endif %}>All Circuits</option>
+                <option value="linked" {% if sci_linked_filter == 'linked' %}selected{% endif %}>Linked Only</option>
+                <option value="unlinked" {% if sci_linked_filter == 'unlinked' %}selected{% endif %}>Unlinked Only</option>
+            </select>
+
+            <label for="invoice_link_filter">Invoice Link Status:</label>
+            <select name="invoice_linked" id="invoice_link_filter">
+                <option value="" {% if invoice_linked_filter == '' %}selected{% endif %}>All Circuits</option>
+                <option value="linked" {% if invoice_linked_filter == 'linked' %}selected{% endif %}>Linked Only</option>
+                <option value="unlinked" {% if invoice_linked_filter == 'unlinked' %}selected{% endif %}>Unlinked Only</option>
+            </select>
+
+            <label for="audit_date_filter">Audit Status:</label>
+            <select name="audit_date_filter" id="audit_date_filter">
+                <option value="" {% if not audit_date_filter %}selected{% endif %}>All</option>
+                <option value="1m" {% if audit_date_filter == '1m' %}selected{% endif %}>Older than 1 Month</option>
+                <option value="3m" {% if audit_date_filter == '3m' %}selected{% endif %}>Older than 3 Months</option>
+                <option value="older" {% if audit_date_filter == 'older' %}selected{% endif %}>Audit Date Older than 3 Months</option>
+            </select>
+
+            <label for="billing_month_filter">Billing Month:</label> {# NEW FILTER #}
+            <select name="billing_month" id="billing_month_filter">
+                {# Removed the "All Months" option #}
+                {% for month in usage_month_options %}
+                <option value="{{ month }}" {% if month == billing_month %}selected{% endif %}>{{ month }}</option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit" class="button">Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="list-section">
+    <h3>Circuits ({{ circuits|length }})</h3>
+
+    <div class="color-key">
+        <strong>Key:</strong>
+        <span class="key-item"><span class="color-box profit-positive"></span> Profitable</span>
+        <span class="key-item"><span class="color-box profit-neutral"></span> Break-even</span>
+        <span class="key-item"><span class="color-box profit-negative"></span> Loss</span>
+        <span class="key-item"><span class="status-border-key audit-ok-key"></span> Audit OK</span>
+        <span class="key-item"><span class="status-border-key no-invoice-key"></span> No Invoice</span>
+    </div>
+
+    <form id="bulk-update-form" method="POST" action="{{ url_for('customer.customer_bulk_update') }}">
+        <input type="hidden" name="customer_id" value="{{ customer.id }}">
+        <input type="hidden" name="updates_json" id="updates-json">
+        <input type="hidden" name="export_ids" id="export-ids">
+        <input type="hidden" name="customer" value="{{ customer.name }}">
+
+        <!-- Actions Toolbar at the TOP -->
+        <div class="actions-toolbar">
+            <button type="button" class="button export-button" onclick="handleExport('circuits')">Export Circuits</button>
+            <button type="button" class="button export-button" onclick="handleExport('scis')">Export SCIs</button>
+            <button type="button" class="button" onclick="prepareAndSubmitForm('apply')">Apply Selections</button>
+            <button type="button" class="button auto-audit" onclick="prepareAndSubmitForm('auto_audit')">Auto Audit</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th class="table-col-checkbox">
+                        <input type="checkbox" id="select-all-export"><br>All
+                    </th>
+                    <th class="table-col-circuit-id">Circuit ID</th>
+                    <th class="table-col-site">Site</th>
+                    <th class="table-col-telco">Telco</th>
+                    <th class="table-col-status">Status</th>
+                    <th class="table-col-audit-date">Audit Date</th>
+                    <th class="table-col-sci">Linked SCI</th>
+                    <th class="table-col-cost">SCI Cost</th>
+                    <th class="table-col-sell">Sell</th>
+                    <th class="table-col-invoice-total">Invoice Total</th>
+                    <th class="table-col-profit-loss">Profit/Loss</th>
+                    <th class="table-col-linked-items">Linked Invoice Items</th>
+                    <th class="table-col-review-flag text-center">Review Flag</th>
+                    <th class="table-col-override">Override<br><input type="checkbox" id="select-all-override"></th>
+                    <th class="table-col-cost-action">Cost<br><input type="checkbox" id="select-all-cost"></th>
+                    <th class="table-col-manual-audit">Audit<br><input type="checkbox" id="select-all-manual-audit"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for circuit in circuits %}
+                {% set cost = circuit.datacom_cost_price %}
+                {% set sell = circuit.customer_sell_price %}
+                {% set invoice_total = circuit.invoice_month_total %}
+                {% set row_class = '' %}
+                {% set status_class = '' %}
+
+                {% if not circuit.has_invoice_link %}
+                    {% set status_class = 'no-invoice' %}
+                {% else %}
+                    {% if cost is not none and sell is not none and sell > 0 %}
+                        {% if cost < sell %}{% set row_class = 'profit-positive' %}
+                        {% elif cost == sell %}{% set row_class = 'profit-neutral' %}
+                        {% else %}{% set row_class = 'profit-negative' %}{% endif %}
+                    {% endif %}
+                    {% set has_recent_audit = circuit.audit_date and three_months_ago and circuit.audit_date >= three_months_ago %}
+                    {% if has_recent_audit %}
+                        {% set status_class = 'audit-ok' %}
+                    {% endif %}
+                {% endif %}
+
+                <tr class="{{ row_class }} {{ status_class }} clickable-row" data-href="{{ url_for('customer.manage_circuit', customer_id=customer.id, circuit_id=circuit.id) }}">
+                    <td class="table-col-checkbox">
+                        <input type="checkbox" class="export-checkbox" data-cmdb-id="{{ circuit.id }}" data-sci-id="{{ circuit.sci_id or '' }}">
+                    </td>
+                    <td class="table-col-circuit-id">{{ circuit.circuit_id }}</td>
+                    <td class="table-col-site">{{ circuit.site_name }}</td>
+                    <td class="table-col-telco">{{ circuit.telco }}</td>
+                    <td class="table-col-status">{{ circuit.status }}</td>
+                    <td class="table-col-audit-date">{{ circuit.audit_date.strftime('%Y-%m-%d') if circuit.audit_date else 'N/A' }}</td>
+                    <td class="table-col-sci">{{ circuit.sci_name or 'N/A' }}</td>
+                    <td class="price-cell table-col-cost">
+                        {{ '$%.2f'|format(circuit.datacom_cost_price|float) if circuit.datacom_cost_price is not none else 'N/A' }}
+                    </td>
+                    <td class="price-cell table-col-sell">
+                        {{ '$%.2f'|format(circuit.customer_sell_price|float) if circuit.customer_sell_price is not none else 'N/A' }}
+                    </td>
+                    <td class="price-cell table-col-invoice-total">{{ '$%.2f'|format(circuit.invoice_month_total|float) if circuit.invoice_month_total is not none else 'N/A' }}</td>
+                    <td class="price-cell table-col-profit-loss">
+                        {% if circuit.customer_sell_price is not none and circuit.invoice_month_total is not none %}
+                            {% set profit = circuit.customer_sell_price|float - circuit.invoice_month_total|float %}
+                            {% if profit > 0 %}
+                                <span style="color: green;">{{ '$%.2f'|format(profit) }}</span>
+                            {% elif profit < 0 %}
+                                <span style="color: red;">{{ '$%.2f'|format(profit) }}</span>
+                            {% else %}
+                                <span>{{ '$%.2f'|format(profit) }}</span>
+                            {% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td class="table-col-linked-items">{{ circuit.linked_invoice_items or 'N/A' }}</td>
+                    <td class="text-center table-col-review-flag">
+                        <input type="checkbox" class="review-flag-checkbox" data-circuit-id="{{ circuit.id }}" data-notes="{{ circuit.review_notes or '' }}" {% if circuit.review_flag %}checked{% endif %}>
+                    </td>
+                    <td class="table-col-override">
+                        {% if circuit.supplier_override_name %}
+                        <input type="checkbox" class="override-checkbox" data-cmdb-id="{{ circuit.id }}">
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    <td class="table-col-cost-action">
+                        {% if circuit.linked_invoice_item_id and circuit.sci_id %}
+                        <input type="checkbox" class="cost-checkbox" data-cmdb-id="{{ circuit.id }}">
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    <td class="table-col-manual-audit">
+                        {% if not circuit.linked_invoice_item_id and circuit.datacom_cost_price is not none and circuit.customer_sell_price is not none and circuit.datacom_cost_price <= circuit.customer_sell_price %}
+                        <input type="checkbox" class="manual-audit-checkbox" data-cmdb-id="{{ circuit.id }}">
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    
+                    <td style="display: none;">
+                        <input type="hidden" name="cmdb_id_{{ circuit.id }}" value="{{ circuit.id }}">
+                        <input type="hidden" name="linked_invoice_item_id_{{ circuit.id }}" value="{{ circuit.linked_invoice_item_id or '' }}">
+                        <input type="hidden" name="sci_id_{{ circuit.id }}" value="{{ circuit.sci_id or '' }}">
+                        <input type="hidden" name="supplier_override_name_{{ circuit.id }}" value="{{ circuit.supplier_override_name or '' }}">
+                        <input type="hidden" name="invoice_month_total_{{ circuit.id }}" value="{{ '%.2f'|format(circuit.invoice_month_total) if circuit.invoice_month_total is not none else '' }}">
+                        <input type="hidden" name="sci_customer_sell_price_{{ circuit.id }}" value="{{ circuit.customer_sell_price or '' }}">
+                        <input type="hidden" name="sci_datacom_cost_price_{{ circuit.id }}" value="{{ circuit.datacom_cost_price or '' }}">
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="16" style="text-align: center; color: #777;">
+                        No circuits found for this customer or filter selection.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Actions Toolbar at the BOTTOM -->
+        <div class="actions-toolbar">
+            <button type="button" class="button export-button" onclick="handleExport('circuits')">Export Circuits</button>
+            <button type="button" class="button export-button" onclick="handleExport('scis')">Export SCIs</button>
+            <button type="button" class="button" onclick="prepareAndSubmitForm('apply')">Apply Selections</button>
+            <button type="button" class="button auto-audit" onclick="prepareAndSubmitForm('auto_audit')">Auto Audit</button>
+        </div>
+    </form>
+</div>
+
+<div id="edit-modal" class="modal-overlay">
+    <div class="modal-content">
+        <button id="modal-close-button" class="modal-close">&times;</button>
+        <iframe id="modal-iframe" class="modal-iframe" src=""></iframe>
+    </div>
+</div>
+
+<div id="notes-modal" class="modal-overlay">
+    <div class="modal-content notes-modal-content">
+        <button id="notes-modal-close-button" class="modal-close">&times;</button>
+        <h3>Edit Review Notes</h3>
+        <input type="hidden" id="notes-circuit-id">
+        <textarea id="notes-textarea"></textarea>
+        <div class="button-group" style="justify-content: flex-end;">
+            <button class="button" id="notes-save-button">Save Notes</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const editModal = document.getElementById('edit-modal');
+    const iframe = document.getElementById('modal-iframe');
+    const editModalCloseButton = document.getElementById('modal-close-button');
+    const notesModal = document.getElementById('notes-modal');
+    const notesModalCloseButton = document.getElementById('notes-modal-close-button');
+    const notesSaveButton = document.getElementById('notes-save-button');
+    const notesTextarea = document.getElementById('notes-textarea');
+    const notesCircuitIdInput = document.getElementById('notes-circuit-id');
+    
+    // Checkboxes for bulk actions
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.getElementById('select-all-export').addEventListener('change', function() {
+            document.querySelectorAll('.export-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+        document.getElementById('select-all-override').addEventListener('change', function() {
+            document.querySelectorAll('.override-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+        document.getElementById('select-all-cost').addEventListener('change', function() {
+            document.querySelectorAll('.cost-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+        document.getElementById('select-all-manual-audit').addEventListener('change', function() {
+            document.querySelectorAll('.manual-audit-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+    });
+
+    function openEditModal(url) {
+        iframe.src = url;
+        editModal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        iframe.src = 'about:blank';
+        editModal.style.display = 'none';
+        window.location.reload();
+    }
+
+    function openNotesModal(circuitId, notes) {
+        notesCircuitIdInput.value = circuitId;
+        notesTextarea.value = notes;
+        notesModal.style.display = 'flex';
+    }
+
+    function closeNotesModal() {
+        notesModal.style.display = 'none';
+    }
+
+    editModalCloseButton.addEventListener('click', closeModal);
+    notesModalCloseButton.addEventListener('click', closeNotesModal);
+
+    editModal.addEventListener('click', function(event) {
+        if (event.target === editModal) {
+            closeModal();
+        }
+    });
+    
+    notesModal.addEventListener('click', function(event) {
+        if (event.target === notesModal) {
+            closeNotesModal();
+        }
+    });
+
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(event) {
+            // Only open modal if the click is NOT on a checkbox or other input element
+            if (event.target.closest('input, button')) {
+                return;
+            }
+            const url = this.dataset.href;
+            if (url) {
+                openEditModal(url);
+            }
+        });
+    });
+
+    document.querySelectorAll('.review-flag-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const circuitId = this.dataset.circuitId;
+            const isChecked = this.checked;
+            
+            if (isChecked) {
+                const notes = this.dataset.notes;
+                openNotesModal(circuitId, notes);
+            }
+            
+            fetch('/customers/api/update_review_flag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ circuit_id: circuitId, review_flag: isChecked })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    alert('Failed to update review flag.');
+                    this.checked = !isChecked;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Failed to update review flag.');
+                this.checked = !isChecked;
+            });
+        });
+    });
+
+    notesSaveButton.addEventListener('click', function() {
+        const circuitId = notesCircuitIdInput.value;
+        const newNotes = notesTextarea.value;
+        
+        fetch('/customers/api/update_review_notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ circuit_id: circuitId, review_notes: newNotes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.querySelector(`.review-flag-checkbox[data-circuit-id="${circuitId}"]`).dataset.notes = newNotes;
+                closeNotesModal();
+            } else {
+                alert('Failed to save notes.');
+            }
+        })
+        .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Failed to save notes.');
+            });
+        });
+
+    function handleExport(exportType) {
+        const form = document.getElementById('bulk-update-form');
+        const selectedIds = [];
+        const checkboxes = document.querySelectorAll('.export-checkbox:checked');
+
+        if (checkboxes.length === 0) {
+            alert('Please select at least one row to export.');
+            return;
+        }
+
+        checkboxes.forEach(checkbox => {
+            if (exportType === 'circuits') {
+                const cmdbId = checkbox.dataset.cmdbId;
+                if (cmdbId) selectedIds.push(cmdbId);
+            } else if (exportType === 'scis') {
+                const sciId = checkbox.dataset.sciId;
+                if (sciId) selectedIds.push(sciId);
+            }
+        });
+
+        if (selectedIds.length === 0) {
+            alert(`No items to export for the selected type: ${exportType}.`);
+            return;
+        }
+
+        // Set the form's action to the correct export endpoint
+        form.action = (exportType === 'circuits') 
+            ? "{{ url_for('customer.export_circuits_csv') }}" 
+            : "{{ url_for('customer.export_scis_csv') }}";
+        
+        document.getElementById('export-ids').value = JSON.stringify(selectedIds);
+        
+        form.submit();
+    }
+
+    function prepareAndSubmitForm(action) {
+        const form = document.getElementById('bulk-update-form');
+        const updates = [];
+        const rows = document.querySelectorAll('#bulk-update-form tbody tr');
+
+        rows.forEach((row, index) => {
+            const cmdb_id_input = row.querySelector(`input[name="cmdb_id_${row.querySelector('.export-checkbox').dataset.cmdbId}"]`);
+            if (!cmdb_id_input) return;
+            const cmdb_id = cmdb_id_input.value;
+
+            const update = {
+                cmdb_id: cmdb_id,
+                linked_invoice_item_id: row.querySelector(`input[name="linked_invoice_item_id_${cmdb_id}"]`)?.value || '',
+                sci_id: row.querySelector(`input[name="sci_id_${cmdb_id}"]`)?.value || '',
+                invoice_month_total: row.querySelector(`input[name="invoice_month_total_${cmdb_id}"]`)?.value || '',
+                sci_datacom_cost_price: row.querySelector(`input[name="sci_datacom_cost_price_${cmdb_id}"]`)?.value || '',
+                sci_customer_sell_price: row.querySelector(`input[name="sci_customer_sell_price_${cmdb_id}"]`)?.value || '',
+                supplier_override_name: row.querySelector(`input[name="supplier_override_name_${cmdb_id}"]`)?.value || '',
+            };
+            
+            update.do_audit_circuit = false;
+            update.do_audit_invoice_item = false;
+
+            if (action === 'apply') {
+                const doOverride = row.querySelector(`.override-checkbox[data-cmdb-id="${cmdb_id}"]`)?.checked || false;
+                const doUpdateCost = row.querySelector(`.cost-checkbox[data-cmdb-id="${cmdb_id}"]`)?.checked || false;
+                const doManualAudit = row.querySelector(`.manual-audit-checkbox[data-cmdb-id="${cmdb_id}"]`)?.checked || false;
+
+                update.do_override_vendor_name = doOverride;
+                update.do_update_cost = doUpdateCost;
+                
+                if (doOverride || doUpdateCost || doManualAudit) {
+                    update.do_audit_circuit = true;
+                }
+
+            } else if (action === 'auto_audit') {
+                const linkedInvoiceItem = update.linked_invoice_item_id;
+                const costPrice = parseFloat(update.sci_datacom_cost_price);
+                const invoiceTotal = parseFloat(update.invoice_month_total);
+                const sellPrice = parseFloat(update.sci_customer_sell_price);
+
+                if (linkedInvoiceItem && !isNaN(costPrice) && !isNaN(invoiceTotal) && costPrice === invoiceTotal && sellPrice >= costPrice) {
+                    update.do_audit_circuit = true;
+                    update.do_audit_invoice_item = true;
+                }
+            }
+            updates.push(update);
+        });
+        
+        document.getElementById('updates-json').value = JSON.stringify(updates);
+        form.action = "{{ url_for('customer.customer_bulk_update') }}";
+        form.submit();
+    }
+</script>
+{% endblock %}

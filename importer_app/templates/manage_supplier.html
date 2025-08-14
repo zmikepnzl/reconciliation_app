@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Supplier: {{ supplier.name or 'New Supplier' }}{% endblock %}
+
+{% block head_styles %}
+<style>
+    .main-grid { display: grid; grid-template-columns: 40% 1fr; gap: 30px; }
+    .form-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
+    h3 { margin-top: 0; text-transform: capitalize; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input[type="text"], input[type="email"], select, input[type="file"], textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .button-group { display: flex; justify-content: flex-end; margin-top: 20px; }
+    .account-item { border: 1px solid #ccc; border-radius: 6px; margin-bottom: 10px; background-color: #fff; }
+    .account-header { padding: 15px; font-weight: bold; cursor: pointer; background-color: #f2f6fc; border-bottom: 1px solid #ccc; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 20px;}
+    .account-header:hover { background-color: #e6ecfa; }
+    .account-body { padding: 15px; display: none; }
+    .invoice-month-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; font-size: 0.95em; }
+    .invoice-month-item:last-child { border-bottom: none; }
+    .invoice-month-item .month-link { flex: 0 0 25%; font-weight: bold; color: #002169; text-decoration: none; }
+    .invoice-month-item .month-info { flex: 1 1 auto; display: flex; justify-content: space-between; }
+    .invoice-month-item .month-info > span { padding: 0 10px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .full-width { grid-column: 1 / -1; }
+    .header-main-info { font-size: 1.1em; color: #002169; }
+    .header-stat { font-size: 0.9em; font-weight: normal; color: #555; }
+    .audit-counts span { padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; margin-right: 4px; font-size: 0.9em; }
+    .count-green { background-color: #28a745; }
+    .count-orange { background-color: #fd7e14; }
+    .count-red { background-color: #dc3545; }
+
+    /* Updated styles for clickable mapping rows */
+    .mapping-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 15px;
+        background-color: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        cursor: pointer; /* Makes the whole row look clickable */
+        transition: background-color 0.2s;
+    }
+    .mapping-item:hover {
+        background-color: #f2f6fc;
+    }
+    .mapping-info .mapping-name { /* Changed from a link to a span */
+        font-weight: bold;
+        color: #002169;
+        font-size: 1.05em;
+    }
+    .mapping-info .mapping-description {
+        font-size: 0.85em;
+        color: #666;
+        margin: 4px 0 0 0;
+        font-style: italic;
+    }
+    .mapping-actions .button-danger {
+        background-color: #e74c3c;
+        color: white;
+        padding: 6px 12px;
+        font-size: 0.9em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .mapping-actions .button-danger:hover {
+        background-color: #c0392b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('supplier_setup.index') }}" class="back-link">&larr; Back to All Suppliers</a>
+<h1>Manage Supplier: <span style="color: #002169;">{{ supplier.name or 'New Supplier' }}</span></h1>
+
+<div class="main-grid">
+    <div>
+        <div class="form-section">
+            <h3>Supplier Details</h3>
+            <form action="{{ url_for('supplier_setup.save_supplier') }}" method="POST">
+                <input type="hidden" name="supplier_id" value="{{ supplier.id }}">
+                <div class="form-grid">
+                    <div class="form-group"><label for="name">Supplier Name</label><input type="text" id="name" name="name" value="{{ supplier.name or '' }}" required></div>
+                    <div class="form-group"><label for="type">Type</label><input type="text" id="type" name="type" value="{{ supplier.type or '' }}"></div>
+                    <div class="form-group"><label for="contact_person">Contact Person</label><input type="text" id="contact_person" name="contact_person" value="{{ supplier.contact_person or '' }}"></div>
+                    <div class="form-group"><label for="account_manager_email">Account Manager Email</label><input type="email" id="account_manager_email" name="account_manager_email" value="{{ supplier.account_manager_email or '' }}"></div>
+                    <div class="form-group"><label for="supplier_short_name">Supplier Short Name</label><input type="text" id="supplier_short_name" name="supplier_short_name" value="{{ supplier.supplier_short_name or '' }}"></div>
+                    <div class="form-group"><label for="override_name">Override Name</label><input type="text" id="override_name" name="override_name" value="{{ supplier.override_name or '' }}" placeholder="(Zeus Telco)"></div>
+                    <div class="form-group full-width"><label for="other_names">Other Names (comma-separated)</label><textarea id="other_names" name="other_names" rows="3">{{ supplier.other_names or '' }}</textarea></div>
+                </div>
+                <div class="button-group"><button type="submit" class="button">Save Supplier</button></div>
+            </form>
+        </div>
+        <div class="form-section">
+            <h3>Import New Invoice</h3>
+            <form action="{{ url_for('supplier_setup.import_invoice', supplier_id=supplier.id) }}" method="POST" enctype="multipart/form-data">
+                <div class="form-group"><label for="mapping_name_select">Select Mapping:</label><select name="mapping_name_select" id="mapping_name_select" required><option value="">-- Select --</option>{% for m in mappings %}<option value="{{ m.mapping_name }}">{{ m.mapping_name }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label for="invoice_file">Invoice CSV File(s):</label><input type="file" name="invoice_file" required multiple accept=".csv"></div>
+                <button type="submit" class="button">Upload & Import</button>
+            </form>
+        </div>
+        <div class="form-section">
+            <h3>Import Mappings</h3>
+            <div id="mappings-list">
+                {% for mapping in mappings %}
+                <div class="mapping-item" onclick="navigateToUrl(event, '{{ url_for('mapping_manager.manage_mapping_lines', mapping_id=mapping.id) }}')">
+                    <div class="mapping-info">
+                        <span class="mapping-name">{{ mapping.mapping_name }}</span>
+                        {% if mapping.description %}
+                        <p class="mapping-description">{{ mapping.description }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mapping-actions">
+                        <form action="{{ url_for('supplier_setup.delete_mapping', mapping_id=mapping.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this mapping and all its rules? This cannot be undone.');">
+                            <button type="submit" class="button-danger" onclick="event.stopPropagation();">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p>No mappings found. Click 'Add New Mapping' to create one.</p>
+                {% endfor %}
+            </div>
+            <form action="{{ url_for('supplier_setup.create_mapping', supplier_id=supplier.id) }}" method="POST" style="margin-top: 15px;"><button type="submit" class="button">Add New Mapping</button></form>
+        </div>
+    </div>
+
+    <div>
+        <div class="form-section">
+            <h3>Supplier Accounts</h3>
+            <div id="accounts-list">
+                {% for account in accounts %}
+                <div class="account-item">
+                    <div class="account-header" onclick="toggleAccount(this)">
+                        <div class="header-main-info">{{ account.account_number }}</div>
+                        <div class="header-stat"><strong>Last Invoice Imported:</strong> {{ account.last_invoice_month.strftime('%b %Y') if account.last_invoice_month else 'N/A' }}</div>
+                        <div class="header-stat"><strong>Total Items:</strong> {{ account.total_items_count }}</div>
+                        <div class="header-stat"><strong>Linked:</strong> {{ account.linked_items_count }} / <strong>Unlinked:</strong> {{ account.unlinked_items_count }}</div>
+                        <div class="audit-counts"><strong>Audit:</strong><span class="count-green" title="Audited Recently">{{ account.audited_recent_count }}</span><span class="count-orange" title="Audit is Old">{{ account.audited_old_count }}</span><span class="count-red" title="Unaudited">{{ account.unaudited_count }}</span></div>
+                    </div>
+                    <div class="account-body">
+                        {% for month in account.months %}
+                        <div class="invoice-month-item">
+                            <a href="{{ url_for('supplier_setup.view_account_items', account_id=account.id, invoice_date=month.billing_month_obj.strftime('%Y-%m-%d')) }}" class="month-link">{{ month.billing_month_obj.strftime('%B %Y') }}</a>
+                            <div class="month-info">
+                                <span><strong>Invoice Date:</strong> {{ month.invoice_date_obj.strftime('%Y-%m-%d') if month.invoice_date_obj else 'N/A' }}</span>
+                                <span><strong>Total Items:</strong> {{ month.item_count }}</span>
+                                <span><strong>Invoice Total:</strong> ${{ '%.2f'|format(month.monthly_total) }}</span>
+                            </div>
+                        </div>
+                        {% else %}<p>No monthly invoice data found for this account.</p>{% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <p>No accounts found for this supplier.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleAccount(headerElement) {
+        const body = headerElement.nextElementSibling;
+        body.style.display = body.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function navigateToUrl(event, url) {
+        // This function navigates to the given URL when a row is clicked.
+        // It prevents navigation if the user clicked on a button or form element inside the row.
+        if (event.target.tagName.toLowerCase() !== 'button' && event.target.tagName.toLowerCase() !== 'form') {
+            window.location.href = url;
+        }
+    }
+</script>
+{% endblock %}

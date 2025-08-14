@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts for {{ supplier.name }}{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .list-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #f2f6fc; }
+    .actions button { text-decoration: none; font-weight: bold; color: #002169; background: none; border: none; cursor: pointer; font-family: inherit; font-size: inherit; padding: 0;}
+    .back-link { display: block; margin-bottom: 20px; font-weight: bold; color: #002169; text-decoration: none; }
+    .audit-counts span {
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: white;
+        font-weight: bold;
+        margin-right: 4px;
+    }
+    .count-green { background-color: #28a745; }
+    .count-orange { background-color: #fd7e14; }
+    .count-red { background-color: #dc3545; }
+    .invoice-items-container {
+        margin-top: 15px;
+        padding: 15px;
+        border: 1px solid #cce5ff;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('supplier_setup.index') }}" class="back-link">&larr; Back to All Suppliers</a>
+<div class="page-header">
+    <h1>Account Numbers for: <span style="color: #002169;">{{ supplier.name }}</span></h1>
+</div>
+
+<div class="list-section">
+    <h3>Accounts</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Account Number</th>
+                <th>Total Items</th>
+                <th>Unlinked Items</th>
+                <th>Item Audit Status (Recent/Old/None)</th>
+                <th>Last Invoice Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in accounts %}
+            <tr onclick="window.location.href='{{ url_for('supplier_setup.view_account_items', account_id=account.id) }}'">
+                <td>{{ account.account_number }}</td>
+                <td>{{ account.item_count }}</td>
+                <td>{{ account.unlinked_count }}</td>
+                <td class="audit-counts">
+                    <span class="count-green" title="Audited in last 3 months">{{ account.audited_recent_count }}</span>
+                    <span class="count-orange" title="Audited over 3 months ago">{{ account.audited_old_count }}</span>
+                    <span class="count-red" title="Never audited">{{ account.unaudited_count }}</span>
+                </td>
+                <td>{{ account.last_invoice_date.strftime('%Y-%m-%d') if account.last_invoice_date else 'N/A' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: #777;">
+                    No account numbers found for this supplier.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

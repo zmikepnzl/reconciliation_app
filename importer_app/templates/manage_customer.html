@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if customer.id %}
+        Edit {{ customer.name }}
+    {% else %}
+        Add New Customer
+    {% endif %}
+{% endblock %}
+
+{% block head_styles %}
+<style>
+    .form-container { max-width: 600px; margin: 0 auto; }
+    .form-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
+    h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .button-group { display: flex; justify-content: space-between; align-items: center; margin-top: 20px;}
+    .back-link { font-weight: bold; color: #555; text-decoration: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <a href="{{ url_for('customer.index') }}" class="back-link">&larr; Back to Customers</a>
+    
+    <h1>
+        {% if customer.id %}
+            Edit Customer: <span style="color: #002169;">{{ customer.name }}</span>
+        {% else %}
+            Add New Customer
+        {% endif %}
+    </h1>
+
+    <div class="form-section">
+        <form action="{{ url_for('customer.save_customer') }}" method="POST">
+            <input type="hidden" name="customer_id" value="{{ customer.id or '' }}">
+            <div class="form-group">
+                <label for="name">Customer Name:</label>
+                <input type="text" id="name" name="name" value="{{ customer.name or '' }}" required>
+            </div>
+            <div class="button-group">
+                <button type="submit">Save Customer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

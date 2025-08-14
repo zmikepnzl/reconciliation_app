@@ -1,0 +1,1482 @@
+{
+    "circuit_invoice_links": {
+        "columns": [
+            {
+                "column_name": "circuit_id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "invoice_item_id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "circuit_invoice_links",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "circuit_id",
+                "foreign_table_name": "cmdb_circuits",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "circuit_invoice_links",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "invoice_item_id",
+                "foreign_table_name": "supplier_invoice_items",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "circuit_invoice_links",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "circuit_id",
+                "foreign_table_name": "circuit_invoice_links",
+                "foreign_column_name": "invoice_item_id"
+            },
+            {
+                "table_name": "circuit_invoice_links",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "circuit_id",
+                "foreign_table_name": "circuit_invoice_links",
+                "foreign_column_name": "circuit_id"
+            },
+            {
+                "table_name": "circuit_invoice_links",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "invoice_item_id",
+                "foreign_table_name": "circuit_invoice_links",
+                "foreign_column_name": "invoice_item_id"
+            },
+            {
+                "table_name": "circuit_invoice_links",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "invoice_item_id",
+                "foreign_table_name": "circuit_invoice_links",
+                "foreign_column_name": "circuit_id"
+            }
+        ]
+    },
+    "cmdb_circuits": {
+        "columns": [
+            {
+                "column_name": "access",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "activated",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "audit_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "ce_host",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "cir",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "cir_pri",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "circuit_id",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "circuit_name",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "circuit_service_type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "circuit_termination_type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "circuit_type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "contract_end",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "contract_start",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "customer_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "datacom_billing_code",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "datacom_last_billing_run_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "decommissioned",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "exchange",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "host",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('cmdb_circuits_id_seq'::regclass)"
+            },
+            {
+                "column_name": "interface",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "ip_pe",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "ip_router",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "last_updated",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "linknet",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "netflow",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "netops_sensor_id",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "notes",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "pe_host",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "pir",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "priority",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "qosprofile",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "region",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "review_flag",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": "false"
+            },
+            {
+                "column_name": "review_notes",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "review_notes_date",
+                "data_type": "timestamp with time zone",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_catalogue_item_imported",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_catalogue_item_linked_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_end_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "site_code",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "site_name",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "status",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "telco",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "vendor_account_number",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "vendor_billing_end_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "vlan",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "zeus_id",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "cmdb_circuits",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "customer_id",
+                "foreign_table_name": "customers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "cmdb_circuits",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "service_catalogue_item_linked_id",
+                "foreign_table_name": "service_catalog_items",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "cmdb_circuits",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "cmdb_circuits",
+                "foreign_column_name": "id"
+            }
+        ]
+    },
+    "customers": {
+        "columns": [
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('customers_id_seq'::regclass)"
+            },
+            {
+                "column_name": "name",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "customers",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "customers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "customers",
+                "constraint_type": "UNIQUE",
+                "column_name": "name",
+                "foreign_table_name": "customers",
+                "foreign_column_name": "name"
+            }
+        ]
+    },
+    "import_mapping_lines": {
+        "columns": [
+            {
+                "column_name": "baserow_field_name",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "end_date",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "field_role",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "formula_template",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('import_mapping_lines_id_seq'::regclass)"
+            },
+            {
+                "column_name": "ignore_match",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "mapping_name_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "name",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "source_csv_column",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "source_link_field",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "source_link_table",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "source_type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "start_date",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "static_value",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "transformation",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "transformation_args",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "import_mapping_lines",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "mapping_name_id",
+                "foreign_table_name": "import_mappings",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "import_mapping_lines",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "import_mapping_lines",
+                "foreign_column_name": "id"
+            }
+        ]
+    },
+    "import_mappings": {
+        "columns": [
+            {
+                "column_name": "description",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "display_order",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('import_mappings_id_seq'::regclass)"
+            },
+            {
+                "column_name": "is_active",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": "true"
+            },
+            {
+                "column_name": "mapping_name",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "notes",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "sample_csv_first_row",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "sample_csv_headers",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "supplier_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "import_mappings",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "supplier_id",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "import_mappings",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "import_mappings",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "import_mappings",
+                "constraint_type": "UNIQUE",
+                "column_name": "mapping_name",
+                "foreign_table_name": "import_mappings",
+                "foreign_column_name": "mapping_name"
+            }
+        ]
+    },
+    "loggingcontrol": {
+        "columns": [
+            {
+                "column_name": "application",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "description",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('loggingcontrol_id_seq'::regclass)"
+            },
+            {
+                "column_name": "level",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "state",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "loggingcontrol",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "loggingcontrol",
+                "foreign_column_name": "id"
+            }
+        ]
+    },
+    "mapping_rules_metadata": {
+        "columns": [
+            {
+                "column_name": "custom_options",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "default_transformation",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "destination_field",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "field_role",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "formula_template",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('mapping_rules_metadata_id_seq'::regclass)"
+            },
+            {
+                "column_name": "is_base_rule",
+                "data_type": "boolean",
+                "is_nullable": "NO",
+                "column_default": "false"
+            },
+            {
+                "column_name": "is_hidden",
+                "data_type": "boolean",
+                "is_nullable": "NO",
+                "column_default": "false"
+            },
+            {
+                "column_name": "is_required",
+                "data_type": "boolean",
+                "is_nullable": "NO",
+                "column_default": "false"
+            },
+            {
+                "column_name": "link_field_lookup",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "link_table_lookup",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "rule_name",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "source_type_options",
+                "data_type": "text",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "static_value",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "transformation_args",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "mapping_rules_metadata",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "mapping_rules_metadata",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "mapping_rules_metadata",
+                "constraint_type": "UNIQUE",
+                "column_name": "rule_name",
+                "foreign_table_name": "mapping_rules_metadata",
+                "foreign_column_name": "rule_name"
+            }
+        ]
+    },
+    "scheduled_backups": {
+        "columns": [
+            {
+                "column_name": "backup_name",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "backup_type",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "day_of_month",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "day_of_week",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "frequency",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('scheduled_backups_id_seq'::regclass)"
+            },
+            {
+                "column_name": "is_active",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": "true"
+            },
+            {
+                "column_name": "last_run_status",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "last_run_timestamp",
+                "data_type": "timestamp with time zone",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "next_run_timestamp",
+                "data_type": "timestamp with time zone",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "notes",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "time_of_day",
+                "data_type": "time without time zone",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "scheduled_backups",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "scheduled_backups",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "scheduled_backups",
+                "constraint_type": "UNIQUE",
+                "column_name": "backup_name",
+                "foreign_table_name": "scheduled_backups",
+                "foreign_column_name": "backup_name"
+            }
+        ]
+    },
+    "service_catalog_items": {
+        "columns": [
+            {
+                "column_name": "additional_info",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "adjustment_percentage",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billable",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billable_quantity",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billing_name",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "contract_number",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "customer_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "customer_sell_price",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "customer_standard_price",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "datacom_cost_price",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "host_types",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('service_catalog_items_id_seq'::regclass)"
+            },
+            {
+                "column_name": "include_in_billing_run",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "master_service_catalogue_item",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "netsuite_ru_item_code",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "pipeline_quantity",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_billing_method",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_description",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_key",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_line",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "total_bill_price",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "unit",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "zeus_id",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "service_catalog_items",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "service_catalog_items",
+                "foreign_column_name": "id"
+            }
+        ]
+    },
+    "servicerates": {
+        "columns": [
+            {
+                "column_name": "active",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billing_type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "currency",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "effective_end_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "effective_start_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('servicerates_id_seq'::regclass)"
+            },
+            {
+                "column_name": "notes",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "rate_code",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "rate_per_unit",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "service_description",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "supplier_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "unit_of_measure",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "servicerates",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "supplier_id",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "servicerates",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "servicerates",
+                "foreign_column_name": "id"
+            }
+        ]
+    },
+    "supplier_account": {
+        "columns": [
+            {
+                "column_name": "account_number",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('supplier_account_id_seq'::regclass)"
+            },
+            {
+                "column_name": "supplier_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "supplier_account",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "supplier_id",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_account",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "supplier_account",
+                "foreign_column_name": "id"
+            }
+        ]
+    },
+    "supplier_invoice_headers": {
+        "columns": [
+            {
+                "column_name": "account_number_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billing_month",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billing_month_logic",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "due_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('supplier_invoice_headers_id_seq'::regclass)"
+            },
+            {
+                "column_name": "invoice_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "invoice_number",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "supplier_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "tax_amount",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "total_amount",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "supplier_invoice_headers",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "account_number_id",
+                "foreign_table_name": "supplier_account",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_headers",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "supplier_id",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_headers",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "supplier_invoice_headers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_headers",
+                "constraint_type": "UNIQUE",
+                "column_name": "invoice_number",
+                "foreign_table_name": "supplier_invoice_headers",
+                "foreign_column_name": "invoice_number"
+            }
+        ]
+    },
+    "supplier_invoice_items": {
+        "columns": [
+            {
+                "column_name": "account_number_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "audit_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "billing_reference",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "contract_end_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "contract_start_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "contract_term_in_months",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('supplier_invoice_items_id_seq'::regclass)"
+            },
+            {
+                "column_name": "notes",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "review_flag",
+                "data_type": "boolean",
+                "is_nullable": "YES",
+                "column_default": "false"
+            },
+            {
+                "column_name": "supplier_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "supplier_invoice_items",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "account_number_id",
+                "foreign_table_name": "supplier_account",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_items",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "supplier_id",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_items",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "supplier_invoice_items",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_items",
+                "constraint_type": "UNIQUE",
+                "column_name": "billing_reference",
+                "foreign_table_name": "supplier_invoice_items",
+                "foreign_column_name": "billing_reference"
+            }
+        ]
+    },
+    "supplier_invoice_lines": {
+        "columns": [
+            {
+                "column_name": "description",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "end_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('supplier_invoice_lines_id_seq'::regclass)"
+            },
+            {
+                "column_name": "invoice_header_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "item_id",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "quantity",
+                "data_type": "integer",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "start_date",
+                "data_type": "date",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "total_amount",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "unique_reference",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "unit_price",
+                "data_type": "numeric",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "supplier_invoice_lines",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "invoice_header_id",
+                "foreign_table_name": "supplier_invoice_headers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_lines",
+                "constraint_type": "FOREIGN KEY",
+                "column_name": "item_id",
+                "foreign_table_name": "supplier_invoice_items",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_lines",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "supplier_invoice_lines",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "supplier_invoice_lines",
+                "constraint_type": "UNIQUE",
+                "column_name": "unique_reference",
+                "foreign_table_name": "supplier_invoice_lines",
+                "foreign_column_name": "unique_reference"
+            }
+        ]
+    },
+    "suppliers": {
+        "columns": [
+            {
+                "column_name": "account_manager_email",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "contact_person",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "id",
+                "data_type": "integer",
+                "is_nullable": "NO",
+                "column_default": "nextval('suppliers_id_seq'::regclass)"
+            },
+            {
+                "column_name": "name",
+                "data_type": "character varying",
+                "is_nullable": "NO",
+                "column_default": null
+            },
+            {
+                "column_name": "other_names",
+                "data_type": "text",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "override_name",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "supplier_short_name",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            },
+            {
+                "column_name": "type",
+                "data_type": "character varying",
+                "is_nullable": "YES",
+                "column_default": null
+            }
+        ],
+        "constraints": [
+            {
+                "table_name": "suppliers",
+                "constraint_type": "PRIMARY KEY",
+                "column_name": "id",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "id"
+            },
+            {
+                "table_name": "suppliers",
+                "constraint_type": "UNIQUE",
+                "column_name": "name",
+                "foreign_table_name": "suppliers",
+                "foreign_column_name": "name"
+            }
+        ]
+    }
+}

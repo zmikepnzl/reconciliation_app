@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to the Reconciliation App{% endblock %}
+
+{% block head_styles %}
+<style>
+    /* Styles specific to the index page */
+    .welcome-container {
+        text-align: center;
+    }
+    .welcome-container p {
+        font-size: 1.1em;
+        color: #555;
+    }
+    .workflow-list {
+        display: inline-block;
+        text-align: left;
+        font-size: 1.12em;
+    }
+    .welcome-container .note {
+        color: #888;
+        font-size: 1em;
+        margin-top: 30px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome-container">
+    <h1>Welcome to the Circuit Invoice Linker</h1>
+    <p>
+        Use the tabs in the navigation bar to import and reconcile your data.
+    </p>
+    <p>
+        <b>Recommended Workflow:</b>
+    </p>
+    <ol class="workflow-list">
+        <li><b>Customers &gt; Zeus Imports</b>: Import SCI and Circuit data from your CSVs.</li>
+        <li><b>Suppliers &gt; Invoice Import</b>: Import supplier invoice CSVs using your defined mappings.</li>
+        <li><b>Suppliers &gt; Standard/Bulk Linker</b>: Reconcile invoice items to their corresponding CMDB circuits.</li>
+        <li><b>Customers &gt; Zeus Exports</b>: Review, audit, and perform bulk updates on your reconciled data.</li>
+    </ol>
+    <p class="note">
+        <i>
+            Use the "Admin" page to clear out test data and start fresh.
+        </i>
+    </p>
+</div>
+{% endblock %}

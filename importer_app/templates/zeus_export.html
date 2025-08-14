@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Zeus Export & Bulk Update{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .filters-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #f2f6fc; }
+    .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+    .filter-group label { font-weight: bold; }
+    .filter-group select, .filter-group input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    .list-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #e6ecfa; }
+    .actions a { text-decoration: none; margin-right: 15px; font-weight: bold; color: #002169; }
+    .form-checkbox { text-align: center; }
+    .price-cell { text-align: right; }
+    
+    /* --- STATUS BORDER STYLES --- */
+    .audit-ok { border-left: 5px solid #4CAF50; } /* Green for OK */
+    .no-invoice { border-left: 5px solid #d32f2f; } /* Red for missing invoice */
+
+    /* --- PROFITABILITY COLOR STYLES --- */
+    .profit-positive { background-color: #e8f5e9; } /* Green */
+    .profit-neutral { background-color: #fff3e0; } /* Orange */
+    .profit-negative { background-color: #ffebee; } /* Red */
+
+    /* --- COLOR KEY STYLES --- */
+    .color-key {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        font-size: 0.9em;
+    }
+    .key-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .color-box {
+        width: 15px;
+        height: 15px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+    }
+    .status-border-key {
+        width: 10px;
+        height: 15px;
+        background-color: #fff;
+    }
+    .audit-ok-key { border-left: 5px solid #4CAF50; }
+    .no-invoice-key { border-left: 5px solid #d32f2f; }
+
+
+    /* New styles for button layout */
+    .actions-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 15px;
+        margin-top: 15px;
+    }
+    .button.auto-audit {
+         background-color: #28a745;
+    }
+    .button.auto-audit:hover {
+         background-color: #218838;
+    }
+    .button.export-button {
+        background-color: #17a2b8;
+    }
+    .button.export-button:hover {
+        background-color: #138496;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Zeus Export & Bulk Update</h1>
+</div>
+
+<div class="filters-section">
+    <form method="GET" action="{{ url_for('zeus_export.zeus_export') }}">
+        <div class="filter-group">
+            <label for="customer_filter">Customer:</label>
+            <select name="customer" id="customer_filter" required>
+                <option value="">-- Select a Customer --</option>
+                {% for customer_name in customer_options %}
+                <option value="{{ customer_name }}" {% if customer_name == customer %}selected{% endif %}>{{ customer_name }}</option>
+                {% endfor %}
+            </select>
+            <label for="usage_month_filter">Usage Month:</label>
+            <select name="usage_month" id="usage_month_filter" required>
+                <option value="">-- Select a Month --</option>
+                {% for month in usage_month_options %}
+                <option value="{{ month }}" {% if month == usage_month %}selected{% endif %}>{{ month }}</option>
+                {% endfor %}
+            </select>
+            <label for="cmdb_vendor_filter">CMDB Vendor:</label>
+            <select name="cmdb_vendor" id="cmdb_vendor_filter">
+                <option value="">-- All Vendors --</option>
+                {% for vendor in cmdb_vendors %}
+                <option value="{{ vendor }}" {% if vendor == cmdb_vendor_filter %}selected{% endif %}>{{ vendor }}</option>
+                {% endfor %}
+            </select>
+            <label for="invoice_supplier_filter">Invoice Supplier:</label>
+            <select name="invoice_supplier" id="invoice_supplier_filter">
+                <option value="">-- All Suppliers --</option>
+                {% for supplier in invoice_suppliers %}
+                <option value="{{ supplier }}" {% if supplier == invoice_supplier_filter %}selected{% endif %}>{{ supplier }}</option>
+                {% endfor %}
+            </select>
+            <label for="audit_filter">Audit Status:</label>
+            <select name="audit_filter" id="audit_filter">
+                <option value="all" {% if audit_filter == 'all' %}selected{% endif %}>All</option>
+                <option value="1m" {% if audit_filter == '1m' or not audit_filter %}selected{% endif %}>Older than 1 Month</option>
+                <option value="3m" {% if audit_filter == '3m' %}selected{% endif %}>Older than 3 Months</option>
+                <option value="older" {% if audit_date_filter == 'older' %}selected{% endif %}>Audit Date Older than 3 Months</option>
+            </select>
+            <button type="submit" class="button">Load Data</button>
+        </div>
+    </form>
+</div>
+
+{% if rows %}
+<div class="list-section">
+    <h3>Circuits for {{ customer }} ({{ rows|length }})</h3>
+    
+    <div class="color-key">
+        <strong>Key:</strong>
+        <span class="key-item"><span class="color-box profit-positive"></span> Profitable</span>
+        <span class="key-item"><span class="color-box profit-neutral"></span> Break-even</span>
+        <span class="key-item"><span class="color-box profit-negative"></span> Loss</span>
+        <span class="key-item"><span class="status-border-key audit-ok-key"></span> Audit OK</span>
+        <span class="key-item"><span class="status-border-key no-invoice-key"></span> No Invoice</span>
+    </div>
+
+    <form id="bulk-update-form" method="POST" action="{{ url_for('zeus_export.zeus_bulk_update') }}">
+        <input type="hidden" name="customer" value="{{ customer }}">
+        <input type="hidden" name="usage_month" value="{{ usage_month }}">
+        <input type="hidden" name="updates_json" id="updates-json">
+        <input type="hidden" name="action" id="form-action">
+        <input type="hidden" name="export_ids" id="export-ids">
+        
+        <!-- Actions Toolbar at the TOP -->
+        <div class="actions-toolbar">
+            <button type="button" class="button export-button" onclick="handleExport('circuits')">Export Circuits</button>
+            <button type="button" class="button export-button" onclick="handleExport('scis')">Export SCIs</button>
+            <button type="button" class="button" onclick="prepareAndSubmitForm('apply')">Apply Selections</button>
+            <button type="button" class="button auto-audit" onclick="prepareAndSubmitForm('auto_audit')">Auto Audit</button>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th class="form-checkbox"><input type="checkbox" id="select-all-export"></th>
+                    <th>Circuit ID</th>
+                    <th>Site Name</th>
+                    <th>Vendor Name</th>
+                    <th>Audit Date</th>
+                    <th>Linked SCI</th>
+                    <th>Current SCI Cost Price</th>
+                    <th>Sell Price</th>
+                    <th>Linked Invoice Item</th>
+                    <th>Invoice Total</th>
+                    <th>Override Vendor Name<br><input type="checkbox" id="select-all-override"></th>
+                    <th>Set SCI Cost Price<br><input type="checkbox" id="select-all-cost"></th>
+                    <th>Manual Audit<br><input type="checkbox" id="select-all-manual-audit"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                {# --- REVISED LOGIC BLOCK --- #}
+                {% set row_class = '' %}
+                {% set status_class = '' %}
+
+                {% if not row.linked_invoice_item_id %}
+                    {# If there is no invoice, add the red border #}
+                    {% set status_class = 'no-invoice' %}
+                {% else %}
+                    {# An invoice exists, so we can check profitability and audit status #}
+                    {% set cost = row.sci_datacom_cost_price %}
+                    {% set sell = row.sci_customer_sell_price %}
+
+                    {# Only apply profit colors if sell price is loaded and positive #}
+                    {% if cost is not none and sell is not none and sell > 0 %}
+                        {% if cost < sell %}{% set row_class = 'profit-positive' %}
+                        {% elif cost == sell %}{% set row_class = 'profit-neutral' %}
+                        {% else %}{% set row_class = 'profit-negative' %}{% endif %}
+                    {% endif %}
+
+                    {# Determine if "Audit OK" status should be shown #}
+                    {% set passes_audit_check = row.sci_datacom_cost_price is not none and 
+                                                row.sci_customer_sell_price is not none and 
+                                                row.invoice_month_total is not none and 
+                                                row.sci_datacom_cost_price < row.sci_customer_sell_price and 
+                                                row.sci_datacom_cost_price == row.invoice_month_total %}
+                    
+                    {# Assumes 'three_months_ago' is passed from the backend #}
+                    {% set has_recent_audit = row.circuit_audit_date and three_months_ago and row.circuit_audit_date >= three_months_ago %}
+
+                    {% if passes_audit_check or has_recent_audit %}
+                        {% set status_class = 'audit-ok' %}
+                    {% endif %}
+                {% endif %}
+
+                <tr class="{{ row_class }} {{ status_class }}">
+                    <td class="form-checkbox">
+                        <input type="checkbox" class="export-checkbox" data-cmdb-id="{{ row.cmdb_id }}" data-sci-id="{{ row.sci_id or '' }}">
+                    </td>
+                    <td>{{ row.circuit_id }}</td>
+                    <td>{{ row.site_name }}</td>
+                    <td>{{ row.vendor_name }}</td>
+                    <td>{{ row.circuit_audit_date.strftime('%Y-%m-%d') if row.circuit_audit_date else 'N/A' }}</td>
+                    <td>{{ row.sci_service_description or 'N/A' }}</td>
+                    <td class="price-cell">
+                        {{ '$%.2f'|format(row.sci_datacom_cost_price) if row.sci_datacom_cost_price is not none else 'N/A' }}
+                    </td>
+                    <td class="price-cell">
+                        {{ '$%.2f'|format(row.sci_customer_sell_price) if row.sci_customer_sell_price is not none else 'N/A' }}
+                    </td>
+                    <td>{{ row.invoice_billing_reference or 'N/A' }}</td>
+                    <td class="price-cell">{{ '$%.2f'|format(row.invoice_month_total) if row.invoice_month_total is not none else 'N/A' }} ({{ row.invoice_month_linecount }} lines)</td>
+                    <td class="form-checkbox">
+                        {# This checkbox appears if an invoice is linked, meaning a supplier is present to provide an override name #}
+                        {% if row.linked_invoice_item_id %}
+                        <input type="checkbox" name="do_override_vendor_name_{{ row.cmdb_id }}" class="override-checkbox" id="override-{{ row.cmdb_id }}">
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    <td class="form-checkbox">
+                        {% if row.linked_invoice_item_id and row.sci_id %}
+                        <input type="checkbox" name="do_update_cost_{{ row.cmdb_id }}" class="cost-checkbox" id="cost-{{ row.cmdb_id }}">
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    <td class="form-checkbox">
+                        {% if not row.linked_invoice_item_id and row.sci_datacom_cost_price is not none and row.sci_customer_sell_price is not none and row.sci_datacom_cost_price <= row.sci_customer_sell_price %}
+                        <input type="checkbox" name="do_manual_audit_{{ row.cmdb_id }}" class="manual-audit-checkbox" id="manual-audit-{{ row.cmdb_id }}">
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </td>
+                    
+                    <td style="display: none;">
+                        <input type="hidden" name="cmdb_id_{{ row.cmdb_id }}" value="{{ row.cmdb_id }}">
+                        <input type="hidden" name="linked_invoice_item_id_{{ row.cmdb_id }}" value="{{ row.linked_invoice_item_id or '' }}">
+                        <input type="hidden" name="sci_id_{{ row.cmdb_id }}" value="{{ row.sci_id or '' }}">
+                        <input type="hidden" name="supplier_override_name_{{ row.cmdb_id }}" value="{{ row.supplier_override_name or '' }}">
+                        <input type="hidden" name="invoice_month_total_{{ row.cmdb_id }}" value="{{ '%.2f'|format(row.invoice_month_total) if row.invoice_month_total is not none else '' }}">
+                        <input type="hidden" name="sci_customer_sell_price_{{ row.cmdb_id }}" value="{{ row.sci_customer_sell_price or '' }}">
+                        <input type="hidden" name="sci_datacom_cost_price_{{ row.cmdb_id }}" value="{{ row.sci_datacom_cost_price or '' }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Actions Toolbar at the BOTTOM -->
+        <div class="actions-toolbar">
+            <button type="button" class="button export-button" onclick="handleExport('circuits')">Export Circuits</button>
+            <button type="button" class="button export-button" onclick="handleExport('scis')">Export SCIs</button>
+            <button type="button" class="button" onclick="prepareAndSubmitForm('apply')">Apply Selections</button>
+            <button type="button" class="button auto-audit" onclick="prepareAndSubmitForm('auto_audit')">Auto Audit</button>
+        </div>
+
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if rows %}
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        // --- Event Listeners for existing checkboxes ---
+        document.getElementById('select-all-override').addEventListener('change', function() {
+            document.querySelectorAll('.override-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+
+        document.getElementById('select-all-cost').addEventListener('change', function() {
+            document.querySelectorAll('.cost-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+
+        document.getElementById('select-all-manual-audit').addEventListener('change', function() {
+            document.querySelectorAll('.manual-audit-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+
+        // --- NEW Event Listener for Export checkboxes ---
+        document.getElementById('select-all-export').addEventListener('change', function() {
+            document.querySelectorAll('.export-checkbox').forEach(checkbox => {
+                if (!checkbox.disabled) checkbox.checked = this.checked;
+            });
+        });
+    });
+    
+    // --- NEW Function to handle CSV exports ---
+    function handleExport(exportType) {
+        const form = document.getElementById('bulk-update-form');
+        const selectedIds = [];
+        const checkboxes = document.querySelectorAll('.export-checkbox:checked');
+
+        if (checkboxes.length === 0) {
+            alert('Please select at least one row to export.');
+            return;
+        }
+
+        checkboxes.forEach(checkbox => {
+            if (exportType === 'circuits') {
+                const cmdbId = checkbox.dataset.cmdbId;
+                if (cmdbId) selectedIds.push(cmdbId);
+            } else if (exportType === 'scis') {
+                const sciId = checkbox.dataset.sciId;
+                if (sciId) selectedIds.push(sciId);
+            }
+        });
+
+        if (selectedIds.length === 0) {
+            alert(`No items to export for the selected type: ${exportType}.`);
+            return;
+        }
+
+        // Set the form's action to the correct export endpoint
+        form.action = (exportType === 'circuits') 
+            ? "{{ url_for('zeus_export.export_circuits_csv') }}" 
+            : "{{ url_for('zeus_export.export_scis_csv') }}";
+        
+        // Put the selected IDs into the hidden input field
+        document.getElementById('export-ids').value = JSON.stringify(selectedIds);
+        
+        // Submit the form
+        form.submit();
+    }
+
+    // --- Existing function for Apply/Audit actions ---
+    function prepareAndSubmitForm(action) {
+        const form = document.getElementById('bulk-update-form');
+        const updates = [];
+        const rows = document.querySelectorAll('#bulk-update-form tbody tr');
+
+        rows.forEach((row, index) => {
+            const cmdb_id_input = row.querySelector('input[name^="cmdb_id_"]');
+            if (!cmdb_id_input) return;
+            const cmdb_id = cmdb_id_input.value;
+
+            const update = {
+                cmdb_id: cmdb_id,
+                linked_invoice_item_id: row.querySelector(`input[name="linked_invoice_item_id_${cmdb_id}"]`)?.value || '',
+                sci_id: row.querySelector(`input[name="sci_id_${cmdb_id}"]`)?.value || '',
+                invoice_month_total: row.querySelector(`input[name="invoice_month_total_${cmdb_id}"]`)?.value || '',
+                sci_datacom_cost_price: row.querySelector(`input[name="sci_datacom_cost_price_${cmdb_id}"]`)?.value || '',
+                sci_customer_sell_price: row.querySelector(`input[name="sci_customer_sell_price_${cmdb_id}"]`)?.value || '',
+                supplier_override_name: row.querySelector(`input[name="supplier_override_name_${cmdb_id}"]`)?.value || '',
+            };
+            
+            update.do_audit_circuit = false;
+            update.do_audit_invoice_item = false;
+
+            if (action === 'apply') {
+                const doOverride = row.querySelector(`input[name="do_override_vendor_name_${cmdb_id}"]`)?.checked || false;
+                const doUpdateCost = row.querySelector(`input[name="do_update_cost_${cmdb_id}"]`)?.checked || false;
+                const doManualAudit = row.querySelector(`input[name="do_manual_audit_${cmdb_id}"]`)?.checked || false;
+
+                update.do_override_vendor_name = doOverride;
+                update.do_update_cost = doUpdateCost;
+                
+                if (doOverride || doUpdateCost || doManualAudit) {
+                    update.do_audit_circuit = true;
+                }
+
+            } else if (action === 'auto_audit') {
+                const linkedInvoiceItem = update.linked_invoice_item_id;
+                const costPrice = parseFloat(update.sci_datacom_cost_price);
+                const invoiceTotal = parseFloat(update.invoice_month_total);
+                const sellPrice = parseFloat(update.sci_customer_sell_price);
+
+                if (linkedInvoiceItem && !isNaN(costPrice) && !isNaN(invoiceTotal) && costPrice === invoiceTotal && sellPrice >= costPrice) {
+                    update.do_audit_circuit = true;
+                }
+                if (linkedInvoiceItem && !isNaN(sellPrice)) {
+                    update.do_audit_invoice_item = true;
+                }
+            }
+            updates.push(update);
+        });
+        
+        document.getElementById('updates-json').value = JSON.stringify(updates);
+        // Set action for bulk update, not export
+        form.action = "{{ url_for('zeus_export.zeus_bulk_update') }}";
+        document.getElementById('form-action').value = action;
+        form.submit();
+    }
+</script>
+{% endif %}
+{% endblock %}
