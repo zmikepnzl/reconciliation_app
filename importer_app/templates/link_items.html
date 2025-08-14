@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}Link Supplier Invoice Items to CMDB Circuits{% endblock %}
+
+{% block head_styles %}
+<style>
+/* Your existing CSS for flexbox and other styles goes here.
+   The key is that .main-flex and its children are no longer
+   inside the .container div. */
+.main-flex {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 0 30px; /* Add padding to match the container's side margins */
+}
+.left-list, .right-pick {
+    /* ... rest of the pane styles */
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 4px #ccc;
+    padding: 16px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+.left-list { flex: 1.25; min-width: 500px; }
+.right-pick { flex: 1.5; min-width: 650px; }
+.selected-row { background-color: #e0f7fa !important; }
+table { border-collapse: collapse; margin-top: 0; margin-bottom: 0.5em; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #f4f4f4; }
+.red-link { color: red; }
+.filter-form-box {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #fcfcfc;
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    align-items: flex-end;
+}
+.filter-form-box .filter-col { flex-grow: 1; min-width: 150px; max-width: 200px; }
+.filter-form-box label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+.filter-form-box input[type="text"], .filter-form-box select {
+    padding: 7px 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 15px;
+    box-sizing: border-box;
+    width: 100%;
+    background-color: white;
+}
+.pane-header {
+    background-color: #f2f6fc;
+    border: 1px solid #e0e4f8;
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+.pane-header h3 { margin: 0; color: #002165; font-size: 1.4em; }
+
+/* New styles for selected items display */
+.selected-item-display {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: #fcfcfc;
+    margin-top: 15px;
+}
+.selected-item-display p {
+    margin: 5px 0;
+    font-weight: bold;
+}
+.selected-item-display span {
+    font-weight: normal;
+    color: #555;
+}
+
+/* New & Modified Styles for Alignment and Buttons */
+.filter-form-box .form-buttons {
+    flex-grow: 1;
+    align-self: flex-end;
+    min-width: 80px;
+}
+.filter-form-box .form-buttons button {
+    width: 100%;
+}
+.actions-col {
+    width: 1%;
+    white-space: nowrap;
+}
+table button {
+    padding: 5px 10px;
+    font-size: 14px;
+    background-color: #0056b3;
+}
+table button:hover {
+    background-color: #004494;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-flex">
+    <div class="left-list">
+        <div class="pane-header"><h3>Supplier Invoice Items</h3></div>
+        <form id="invoice-filter-form" class="filter-form-box" onsubmit="return false;">
+            <div class="filter-col">
+                <label>Supplier:</label>
+                <select name="supplier" id="supplier-select">
+                    <option value="">-- Select a Supplier --</option>
+                    {% for s in supplier_options %}
+                        <option value="{{ s.name }}" {% if current_filters.get('supplier') == s.name %}selected{% endif %}>
+                            {{ s.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-col">
+                <label>Account Number:</label>
+                <select name="account_number" id="account-number-select">
+                    <option value="">--All--</option>
+                </select>
+            </div>
+            <div class="filter-col">
+                <label>Billing Reference:</label>
+                <input type="text" name="billing_ref" placeholder="Contains..." value="{{ current_filters.get('billing_ref', '') }}" />
+            </div>
+            <div class="filter-col">
+                <label>View:</label>
+                <select name="view_mode" id="view-mode-select">
+                    <option value="unlinked" {% if not current_filters.get('view_mode') or current_filters.get('view_mode') == 'unlinked' %}selected{% endif %}>Unlinked</option>
+                    <option value="all" {% if current_filters.get('view_mode') == 'all' %}selected{% endif %}>All</option>
+                </select>
+            </div>
+            <div class="form-buttons">
+                <button type="reset" class="reset-button" onclick="loadInvoiceItems(true);">Reset</button>
+            </div>
+        </form>
+        <div id="invoice-items-pane" style="flex-grow: 1;">
+            <div style="color: #888; text-align:center; padding: 20px;">Please select a supplier to view items.</div>
+        </div>
+    </div>
+    <div class="right-pick">
+        <div class="pane-header"><h3>Zeus Circuits</h3></div>
+        <form id="cmdb-circuit-filter-form" class="filter-form-box" onsubmit="return false;">
+            <div class="filter-col">
+                <label>Customer:</label>
+                <select name="customer_filter" id="customer-select">
+                    <option value="">--All--</option>
+                    {% for c in customer_options %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-col">
+                <label>Site Name:</label>
+                <input type="text" name="site_name_filter" placeholder="Contains..." />
+            </div>
+            <div class="filter-col">
+                <label>Telco:</label>
+                <input type="text" name="telco_filter" placeholder="Contains..." />
+            </div>
+            <div class="filter-col">
+                <label>Search All Fields:</label>
+                <input type="text" name="search_all_circuits" placeholder="Search..." />
+            </div>
+            <div class="form-buttons">
+                <button type="reset" class="reset-button" onclick="loadCmdbCircuits(true);">Reset</button>
+            </div>
+        </form>
+        <div id="cmdb-circuits-pane" style="flex-grow: 1;">
+            <div style="color: #888; text-align:center; padding: 20px;">Apply a filter to see circuits.</div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="selected-item-display">
+        <h3>Selected Items for Linking</h3>
+        <p>Invoice Item: <span id="selected-invoice-item-ref">None</span></p>
+        <p>Circuit: <span id="selected-circuit-ref">None</span></p>
+        <input type="hidden" id="selected-invoice-item-id" value="">
+        <input type="hidden" id="selected-circuit-id" value="">
+        <button onclick="performLinking()">Link Selected Items</button>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+    let lastSelectedInvoiceItemRow = null;
+    let lastSelectedCircuitRow = null;
+
+    const invoiceFilterForm = document.getElementById('invoice-filter-form');
+    const supplierSelect = document.getElementById('supplier-select');
+    const accountNumberSelect = document.getElementById('account-number-select');
+    const viewModeSelect = document.getElementById('view-mode-select');
+    const invoiceItemsPane = document.getElementById('invoice-items-pane');
+    const cmdbCircuitFilterForm = document.getElementById('cmdb-circuit-filter-form');
+    const customerSelect = document.getElementById('customer-select');
+    const cmdbCircuitsPane = document.getElementById('cmdb-circuits-pane');
+
+    const selectedInvoiceItemRef = document.getElementById('selected-invoice-item-ref');
+    const selectedCircuitRef = document.getElementById('selected-circuit-ref');
+    const selectedInvoiceItemIdInput = document.getElementById('selected-invoice-item-id');
+    const selectedCircuitIdInput = document.getElementById('selected-circuit-id');
+
+
+    function displayError(pane, error) {
+        console.error(error);
+        pane.innerHTML = `<div style="color: red; padding: 20px; font-weight: bold;">JavaScript Error: ${error.message}</div>`;
+    }
+
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    function loadAccountNumbers(selectedSupplierName) {
+        if (!selectedSupplierName) {
+            accountNumberSelect.innerHTML = '<option value="">--All--</option>';
+            return;
+        }
+        const url = `{{ url_for('link_items.get_account_numbers_by_supplier') }}?supplier_name=${encodeURIComponent(selectedSupplierName)}`;
+        fetch(url)
+            .then(response => response.json())
+            .then(accounts => {
+                let optionsHtml = '<option value="">--All--</option>';
+                accounts.forEach(account => {
+                    optionsHtml += `<option value="${account}">${account}</option>`;
+                });
+                accountNumberSelect.innerHTML = optionsHtml;
+            })
+            .catch(error => displayError(invoiceItemsPane, error));
+    }
+
+    function fetchData(paneId, url, callback) {
+        console.log(`Fetching data for pane: ${paneId}, URL: ${url}`);
+        const pane = document.getElementById(paneId);
+        pane.innerHTML = '<div style="color: #888; text-align:center; padding: 20px;">Loading...</div>';
+        fetch(url)
+            .then(r => r.text())
+            .then(html => {
+                pane.innerHTML = html;
+                if (callback) {
+                    console.log(`Running callback for pane: ${paneId}`);
+                    callback();
+                }
+            })
+            .catch(e => {
+                console.error(`Error fetching data for ${paneId}:`, e);
+                displayError(pane, e);
+            });
+    }
+
+    function loadInvoiceItems(reset = false) {
+        console.log("loadInvoiceItems called.");
+        const supplierName = supplierSelect.value;
+        if (!supplierName) {
+            invoiceItemsPane.innerHTML = '<div style="color: #888; text-align:center; padding: 20px;">Please select a supplier to view items.</div>';
+            return;
+        }
+        const form = document.getElementById('invoice-filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        fetchData('invoice-items-pane', `{{ url_for('link_items.get_invoice_items_for_display') }}?${params.toString()}`, attachInvoiceItemClickListeners);
+    }
+    
+    function loadCmdbCircuits(reset = false) {
+        console.log("loadCmdbCircuits called.");
+        const form = document.getElementById('cmdb-circuit-filter-form');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        const customerId = formData.get('customer_filter');
+        if (!customerId) {
+            document.getElementById('cmdb-circuits-pane').innerHTML = '<div style="color: #888; text-align:center; padding: 20px;">Apply a filter to see circuits.</div>';
+            return;
+        }
+        fetchData('cmdb-circuits-pane', `{{ url_for('link_items.get_cmdb_circuits_for_display') }}?${params.toString()}`, attachCmdbCircuitClickListeners);
+    }
+
+    function attachInvoiceItemClickListeners() {
+        console.log("Attaching Invoice Item Click Listeners...");
+        const rows = invoiceItemsPane.querySelectorAll('table tbody tr');
+        console.log(`Found ${rows.length} rows to attach listeners to.`);
+        rows.forEach(row => {
+            const selectButton = row.querySelector('button');
+            if (selectButton) {
+                selectButton.addEventListener('click', (event) => {
+                    event.stopPropagation(); // Stop event bubbling
+                    const itemId = event.target.closest('tr').dataset.itemId;
+                    const billingRef = event.target.closest('tr').querySelector('td:first-child').textContent;
+                    selectInvoiceItem(itemId, billingRef, event.target.closest('tr'));
+                });
+            }
+        });
+    }
+
+    function attachCmdbCircuitClickListeners() {
+        console.log("Attaching CMDB Circuit Click Listeners...");
+        const rows = cmdbCircuitsPane.querySelectorAll('table tbody tr');
+        console.log(`Found ${rows.length} rows to attach listeners to.`);
+        rows.forEach(row => {
+            const selectButton = row.querySelector('button');
+            if (selectButton) {
+                selectButton.addEventListener('click', (event) => {
+                    event.stopPropagation(); // Stop event bubbling
+                    const circuitId = event.target.closest('tr').dataset.circuitId;
+                    const circuitRef = event.target.closest('tr').querySelector('td:first-child').textContent;
+                    selectCmdbCircuit(circuitId, circuitRef, event.target.closest('tr'));
+                });
+            }
+        });
+    }
+
+    function selectInvoiceItem(itemId, billingRef, rowElement) {
+        console.log("selectInvoiceItem called. Item ID:", itemId, "Billing Ref:", billingRef, "Row Element is:", rowElement);
+        if (rowElement) {
+            if (lastSelectedInvoiceItemRow) {
+                lastSelectedInvoiceItemRow.classList.remove('selected-row');
+            }
+            rowElement.classList.add('selected-row');
+            lastSelectedInvoiceItemRow = rowElement;
+        }
+        selectedInvoiceItemIdInput.value = itemId;
+        selectedInvoiceItemRef.textContent = billingRef;
+        console.log("New selected Invoice Item ID:", selectedInvoiceItemIdInput.value);
+    }
+
+    function selectCmdbCircuit(circuitId, circuitRef, rowElement) {
+        console.log("selectCmdbCircuit called. Circuit ID:", circuitId, "Circuit Ref:", circuitRef, "Row Element is:", rowElement);
+        if (rowElement) {
+            if (lastSelectedCircuitRow) {
+                lastSelectedCircuitRow.classList.remove('selected-row');
+            }
+            rowElement.classList.add('selected-row');
+            lastSelectedCircuitRow = rowElement;
+        }
+        selectedCircuitIdInput.value = circuitId;
+        selectedCircuitRef.textContent = circuitRef;
+        console.log("New selected Circuit ID:", selectedCircuitIdInput.value);
+    }
+
+    function performLinking() {
+        console.log("performLinking called.");
+        const invoiceItemId = selectedInvoiceItemIdInput.value;
+        const circuitId = selectedCircuitIdInput.value;
+        console.log(`Invoice Item ID to link: '${invoiceItemId}', Circuit ID to link: '${circuitId}'`);
+
+        if (!invoiceItemId || invoiceItemId === 'None' || invoiceItemId === 'undefined' ||
+            !circuitId || circuitId === 'None' || circuitId === 'undefined') {
+            console.warn('Validation failed: One or both IDs are invalid. Stopping request.');
+            alert('Please select both an Invoice Item and a Circuit to link.');
+            return;
+        }
+        
+        console.log("Validation passed. Sending POST request.");
+        const formData = new FormData();
+        formData.append('item_id', invoiceItemId);
+        formData.append('circuit_id', circuitId);
+
+        fetch('{{ url_for("link_items.link_item_to_circuit") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log("Received response from backend. Status:", response.status);
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                console.log("Linking successful. Reloading tables.");
+                loadInvoiceItems();
+                loadCmdbCircuits();
+                selectedInvoiceItemIdInput.value = '';
+                selectedInvoiceItemRef.textContent = 'None';
+                selectedCircuitIdInput.value = '';
+                selectedCircuitRef.textContent = 'None';
+                if (lastSelectedInvoiceItemRow) lastSelectedInvoiceItemRow.classList.remove('selected-row');
+                if (lastSelectedCircuitRow) lastSelectedCircuitRow.classList.remove('selected-row');
+                alert('Linking successful!');
+            } else {
+                console.error("Linking failed:", data.message);
+                alert('Linking failed: ' + data.message);
+            }
+        })
+        .catch(error => displayError(document.body, error));
+    }
+
+
+    const debouncedLoadInvoices = debounce(() => loadInvoiceItems(), 300);
+    const debouncedLoadCircuits = debounce(() => loadCmdbCircuits(), 300);
+
+    supplierSelect.addEventListener('change', () => {
+        console.log("Supplier changed.");
+        loadAccountNumbers(supplierSelect.value);
+        loadInvoiceItems();
+    });
+    
+    document.getElementById('account-number-select').addEventListener('change', () => {
+        console.log("Account number changed.");
+        loadInvoiceItems();
+    });
+    document.querySelector('input[name="billing_ref"]').addEventListener('input', () => {
+        console.log("Billing reference input.");
+        debouncedLoadInvoices();
+    });
+    document.getElementById('view-mode-select').addEventListener('change', () => {
+        console.log("View mode changed.");
+        loadInvoiceItems();
+    });
+
+    document.querySelector('select[name="customer_filter"]').addEventListener('change', () => {
+        console.log("Customer filter changed.");
+        loadCmdbCircuits();
+    });
+    document.querySelector('input[name="site_name_filter"]').addEventListener('input', () => {
+        console.log("Site name input.");
+        debouncedLoadCircuits();
+    });
+    document.querySelector('input[name="telco_filter"]').addEventListener('input', () => {
+        console.log("Telco input.");
+        debouncedLoadCircuits();
+    });
+    document.querySelector('input[name="search_all_circuits"]').addEventListener('input', () => {
+        console.log("Search all input.");
+        debouncedLoadCircuits();
+    });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM fully loaded and parsed. Performing initial load.");
+        const initialSupplier = supplierSelect.value;
+        if (initialSupplier) {
+            loadAccountNumbers(initialSupplier);
+            loadInvoiceItems();
+        }
+    });
+
+</script>
+{% endblock %}

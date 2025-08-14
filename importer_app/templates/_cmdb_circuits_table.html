@@ -1,0 +1,28 @@
+<table>
+    <thead>
+        <tr>
+            <th>Circuit ID</th>
+            <th>Site Name</th>
+            <th>Telco</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for circuit in cmdb_circuits %}
+        <tr data-circuit-id="{{ circuit.id }}">
+            <td>{{ circuit.circuit_id }}</td>
+            <td>{{ circuit.site_name }}</td>
+            <td>{{ circuit.telco }}</td>
+            <td>{{ circuit.status }}</td>
+            <td>
+                <button>Select</button>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align: center; color: #777;">No circuits found matching the criteria.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

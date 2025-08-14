@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Mappings for {{ supplier.name }}{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-container { max-width: 900px; margin: 0 auto; }
+    .section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    h1, h3 { color: #012169; }
+    h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input[type="text"], textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #f2f6fc; }
+    .actions a, .actions button, .actions label { margin-right: 10px; text-decoration: none; }
+    .actions .button { padding: 5px 10px; font-size: 0.9em; }
+    .back-link { display: block; margin-bottom: 20px; font-weight: bold; color: #002169; text-decoration: none; }
+    .import-form { display: inline-block; }
+    .import-form input[type="file"] { display: none; }
+    .import-form label {
+        padding: 5px 10px;
+        background-color: #28a745;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: normal;
+        border: none;
+    }
+    .import-form label:hover { background-color: #218838; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <a href="{{ url_for('supplier_setup.index') }}" class="back-link">&larr; Back to All Suppliers</a>
+    
+    <h1>Manage Mappings for: <span style="color: #002169;">{{ supplier.name }}</span></h1>
+
+    <div class="section">
+        <h3>Existing Mappings</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mapping in mappings %}
+                <tr>
+                    <td>{{ mapping.mapping_name }}</td>
+                    <td>{{ mapping.description or 'N/A' }}</td>
+                    <td>{{ 'Yes' if mapping.is_active else 'No' }}</td>
+                    <td class="actions">
+                        <a href="{{ url_for('supplier_setup.manage_mapping_lines', mapping_id=mapping.id) }}" class="button">Manage Lines</a>
+                        <a href="{{ url_for('supplier_setup.export_mapping', mapping_id=mapping.id) }}" class="button">Export</a>
+                        <form action="{{ url_for('supplier_setup.delete_mapping', mapping_id=mapping.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this mapping?');">
+                            <button type="submit" class="button btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #777;">No mappings found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>Add or Import Mapping</h3>
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+            
+            <div style="flex: 1;">
+                <h4>Add New Mapping</h4>
+                <form action="{{ url_for('supplier_setup.save_mapping') }}" method="POST">
+                    <input type="hidden" name="supplier_id" value="{{ supplier.id }}">
+                    <div class="form-group">
+                        <label for="mapping_name">Mapping Name:</label>
+                        <input type="text" id="mapping_name" name="mapping_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <textarea id="description" name="description"></textarea>
+                    </div>
+                    <button type="submit">Create New Mapping</button>
+                </form>
+            </div>
+
+            <div style="flex: 1;">
+                <h4>Import Mapping from JSON</h4>
+                <form action="{{ url_for('supplier_setup.import_mapping', supplier_id=supplier.id) }}" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="import-file">Select JSON File:</label>
+                        <input type="file" name="file" id="import-file" accept=".json" required>
+                    </div>
+                    <button type="submit">Import Mapping</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

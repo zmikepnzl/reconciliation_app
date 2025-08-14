@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice Items for Account: {{ account.account_number }}{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .filters-section, .list-section, .invoice-header-info { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+    .filters-section { background-color: #f2f6fc; }
+    .invoice-header-info { background-color: #e6ecfa; display: flex; justify-content: space-between; align-items: center; }
+    .list-section { background-color: #f9f9f9; }
+    .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+    .filter-group label { font-weight: bold; }
+    .filter-group input, .filter-group select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    .back-link { display: block; margin-bottom: 20px; font-weight: bold; color: #002169; text-decoration: none; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: top; }
+    th { background-color: #e6ecfa; }
+    .text-center { text-align: center; }
+    .color-key { display: flex; flex-wrap: wrap; gap: 20px; font-size: 0.9em; margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;}
+    .key-item { display: flex; align-items: center; gap: 6px; }
+    .status-border-key { width: 10px; height: 15px; background-color: #fff; border: 1px solid #ccc;}
+    .link-pill-container { display: flex; flex-wrap: wrap; gap: 5px; }
+    .link-pill { background-color: #e9ecef; border-radius: 12px; padding: 4px 10px; font-size: 0.9em; display: inline-flex; align-items: center; border: 1px solid #ced4da; }
+    .link-pill a { color: #002169; text-decoration: none; cursor: pointer; }
+    .link-pill a:hover { text-decoration: underline; }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background-color: #fff; padding: 20px; border-radius: 8px; width: 95%; max-width: 1400px; height: 90vh; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+    .modal-close { position: absolute; top: 10px; right: 15px; font-size: 24px; font-weight: bold; cursor: pointer; border: none; background: none; }
+    .modal-iframe { width: 100%; height: calc(100% - 30px); border: none; }
+    .clickable-row { cursor: pointer; }
+    .clickable-row:hover { background-color: #e6f7ff !important; }
+    .item-linked { border-left: 5px solid #4CAF50 !important; }
+    .item-unlinked { border-left: 5px solid #d32f2f !important; }
+    .audit-recent { background-color: #e8f5e9; }
+    .audit-old { background-color: #fff3e0; }
+    .list-header { display: flex; justify-content: space-between; align-items: center; }
+    .actions-toolbar { display: flex; justify-content: flex-end; gap: 10px; }
+    .button.auto-audit { background-color: #28a745; }
+    .button.auto-audit:hover { background-color: #218838; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('supplier_setup.manage_supplier', supplier_id=supplier.id) }}" class="back-link">&larr; Back to {{ supplier.name }}</a>
+<div class="page-header">
+    <h1>Invoice Items for Account: <span style="color: #002169;">{{ account.account_number }}</span></h1>
+</div>
+
+<div class="filters-section">
+    <form method="GET" action="{{ url_for('supplier_setup.view_account_items', account_id=account.id) }}">
+        <div class="filter-group">
+            <label for="invoice_date_filter">Billing Month:</label>
+            <select id="invoice_date_filter" name="invoice_date" onchange="this.form.submit()">
+                {% for date in invoice_dates %}<option value="{{ date }}" {% if date == selected_date %}selected{% endif %}>{{ date }}</option>{% else %}<option value="">No Invoices Found</option>{% endfor %}
+            </select>
+            <label for="billing_ref_filter">Billing Reference:</label>
+            <input type="text" id="billing_ref_filter" name="billing_ref" value="{{ billing_ref_filter or '' }}" placeholder="Search Reference">
+            <label for="link_status_filter">Link Status:</label>
+            <select name="link_status" id="link_status_filter">
+                <option value="" {% if link_status_filter == '' %}selected{% endif %}>All</option>
+                <option value="linked" {% if link_status_filter == 'linked' %}selected{% endif %}>Linked</option>
+                <option value="unlinked" {% if link_status_filter == 'unlinked' %}selected{% endif %}>Unlinked</option>
+            </select>
+            <label for="audit_status_filter">Audit Status:</label>
+            <select name="audit_status" id="audit_status_filter">
+                <option value="" {% if not audit_status_filter %}selected{% endif %}>All</option>
+                <option value="1m" {% if audit_status_filter == '1m' %}selected{% endif %}>Unaudited or > 1 Month</option>
+                <option value="3m" {% if audit_status_filter == '3m' %}selected{% endif %}>Unaudited or > 3 Months</option>
+                <option value="older" {% if audit_status_filter == 'older' %}selected{% endif %}>Audited > 3 Months Ago</option>
+            </select>
+            <label for="flagged_filter">Review Status:</label>
+            <select name="flagged_filter" id="flagged_filter">
+                <option value="" {% if not flagged_filter %}selected{% endif %}>All</option>
+                <option value="yes" {% if flagged_filter == 'yes' %}selected{% endif %}>Flagged for Review</option>
+            </select>
+            <button type="submit" class="button">Filter</button>
+        </div>
+    </form>
+</div>
+<div class="invoice-header-info">
+    <div><strong>Invoice Number:</strong> {{ header_info.invoice_number or 'N/A' }}</div>
+    <div><strong>Due Date:</strong> <input type="date" id="due_date_input" value="{{ header_info.due_date if header_info.due_date != 'N/A' else '' }}"></div>
+    <div><strong>Total Amount:</strong> <input type="text" id="total_amount_input" value="{{ '%.2f'|format(header_info.total_amount|float) if header_info.total_amount != 'N/A' else '' }}"></div>
+    <div><button id="save_header_button" class="button">Save</button></div>
+</div>
+
+<div class="list-section">
+    <div class="list-header">
+        <h3>Invoice Items ({{ invoice_items|length }})</h3>
+        <div class="actions-toolbar">
+             <form id="auto-audit-form" method="POST" action="{{ url_for('supplier_setup.bulk_audit_items') }}">
+                 <input type="hidden" name="account_id" value="{{ account.id }}">
+                 <input type="hidden" name="invoice_date" value="{{ selected_date }}">
+                 <input type="hidden" name="billing_ref" value="{{ billing_ref_filter }}">
+                 <input type="hidden" name="link_status" value="{{ link_status_filter }}">
+                 <input type="hidden" name="audit_status" value="{{ audit_status_filter }}">
+                 <input type="hidden" name="flagged_filter" value="{{ flagged_filter }}">
+                 <button type="submit" class="button auto-audit">Auto Audit All Eligible</button>
+             </form>
+        </div>
+    </div>
+    <div class="color-key">
+        <strong>Key:</strong>
+        <span class="key-item"><div class="status-border-key item-linked"></div> Linked</span>
+        <span class="key-item"><div class="status-border-key item-unlinked"></div> Unlinked</span>
+        <span class="key-item"><div style="width: 15px; height: 15px; background-color: #e8f5e9; border: 1px solid #ccc;"></div> Recent Audit</span>
+        <span class="key-item"><div style="width: 15px; height: 15px; background-color: #fff3e0; border: 1px solid #ccc;"></div> Old Audit</span>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Billing Reference</th>
+                <th>Description</th>
+                <th>Total</th>
+                <th>Linked Circuits</th>
+                <th class="text-center">Review Flag</th>
+                <th>Last Audit</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in invoice_items %}
+                {% set border_class = 'item-linked' if item.is_linked else 'item-unlinked' %}
+                {% set audit_class = '' %}
+                {% if item.audit_date %}
+                    {% if item.audit_date >= three_months_ago %}{% set audit_class = 'audit-recent' %}{% else %}{% set audit_class = 'audit-old' %}{% endif %}
+                {% endif %}
+            <tr class="{{ border_class }} {{ audit_class }} clickable-row" data-url="{{ url_for('supplier_setup.manage_invoice_item', item_id=item.id) }}">
+                <td>{{ item.billing_reference }}</td>
+                <td>{{ item.description or 'N/A' }}</td>
+                <td>{{ '$%.2f'|format(item.total_amount) if item.total_amount is not none else 'N/A' }}</td>
+                <td>
+                    <div class="link-pill-container">
+                        {% if item.is_linked and item.linked_circuits %}
+                            {% for link in item.linked_circuits %}
+                                <span class="link-pill">
+                                    <a onclick="openEditModal('{{ url_for('customer.manage_circuit', customer_id=link.customer_id, circuit_id=link.circuit_id) }}')">{{ link.circuit_name }} ({{ link.customer_name }})</a>
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span>Not Linked</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="text-center"><input type="checkbox" class="review-flag-checkbox" data-item-id="{{ item.id }}" data-notes="{{ item.review_notes or '' }}" {% if item.review_flag %}checked{% endif %}></td>
+                <td>{{ item.audit_date.strftime('%Y-%m-%d') if item.audit_date else 'N/A' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center" style="color: #777;">No invoice items found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal containers -->
+<div id="edit-modal" class="modal-overlay">
+    <div class="modal-content">
+        <button id="modal-close-button" class="modal-close">&times;</button>
+        <iframe id="modal-iframe" class="modal-iframe" src="about:blank"></iframe>
+    </div>
+</div>
+<div id="notes-modal" class="modal-overlay" style="z-index: 1001;">
+    <div class="modal-content" style="max-width: 600px; height: auto;">
+        <button id="notes-modal-close-button" class="modal-close">&times;</button>
+        <h3>Edit Review Notes</h3>
+        <input type="hidden" id="notes-item-id">
+        <textarea id="notes-textarea"></textarea>
+        <div style="display: flex; justify-content: flex-end; margin-top: 15px;"><button class="button" id="notes-save-button">Save Notes</button></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- Modal Control ---
+    const editModal = document.getElementById('edit-modal');
+    const iframe = document.getElementById('modal-iframe');
+    const editModalCloseButton = document.getElementById('modal-close-button');
+
+    function openEditModal(url) {
+        iframe.src = url;
+        editModal.style.display = 'flex';
+    }
+    function closeModal() {
+        iframe.src = 'about:blank';
+        editModal.style.display = 'none';
+        window.location.reload();
+    }
+    editModalCloseButton.addEventListener('click', closeModal);
+    editModal.addEventListener('click', e => { if (e.target === editModal) closeModal(); });
+    
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(event) {
+            if (event.target.closest('a, button, input')) {
+                return;
+            }
+            const url = this.dataset.url;
+            if (url) {
+                openEditModal(url);
+            }
+        });
+    });
+
+    // --- Page-specific scripts (for notes, saving header, etc.) ---
+    document.addEventListener('DOMContentLoaded', function() {
+        // All other interactive elements like notes modals, review flags, etc.
+        // are handled by their own event listeners and do not need to be inside this block.
+    });
+</script>
+{% endblock %}

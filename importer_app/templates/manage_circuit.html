@@ -1,0 +1,622 @@
+{% extends "base_modal.html" %}
+
+{% block title %}
+    {% if circuit.id %}
+        Edit Circuit for {{ customer.name }}
+    {% else %}
+        Add New Circuit for {{ customer.name }}
+    {% endif %}
+{% endblock %}
+
+{% block head_styles %}
+<style>
+    /* Adjusted max-width and width for the modal to make it wider */
+    .modal-content {
+        max-width: 1800px; /* Increased max-width for very large screens */
+        width: 90vw; /* Set to 90% of the viewport width as requested */
+        height: 90vh;
+        overflow-y: auto; /* Allow vertical scrolling if content overflows */
+    }
+
+    .form-container { margin: 0 auto; padding: 10px; } /* Added padding for spacing */
+
+    /* Main grid for two columns with specified percentages */
+    .main-form-grid {
+        display: grid;
+        grid-template-columns: 40% 60%; /* Left column 40%, Right column 60% */
+        gap: 20px;
+    }
+
+    .form-section {
+        border: 1px solid #ddd;
+        padding: 20px;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        margin-bottom: 25px; /* Add margin-bottom for spacing between sections in the same column */
+    }
+
+    /* Ensure form-section within the main grid doesn't force full width unless explicitly needed */
+    .form-section.full-width {
+        grid-column: auto; /* Reset to auto for the main grid */
+    }
+
+    h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    textarea { min-height: 80px; }
+    .button-group { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px;}
+    .back-link { font-weight: bold; color: #555; text-decoration: none; display: block; margin-bottom: 15px;}
+    .read-only-field { background-color: #e9ecef; border: 1px solid #ced4da; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; }
+    .checkbox-group input { width: auto; }
+    .invoice-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    .invoice-table th { background-color: #f2f6fc; }
+    .total-row { font-weight: bold; }
+    .sub-section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .unlink-button { background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
+    .unlink-button:hover { background-color: #c82333; }
+    .search-section { border-top: 1px solid #ddd; margin-top: 20px; padding-top: 20px; }
+    .search-results {
+        max-height: 400px; /* Increased height for more items */
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        margin-top: 10px;
+        border-radius: 4px;
+    }
+    .search-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+    .search-item:hover { background-color: #f1f1f1; }
+    .link-button { background-color: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; float: right; }
+    .link-button:hover { background-color: #218838; }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+        .main-form-grid {
+            grid-template-columns: 1fr; /* Stack columns on smaller screens */
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <a href="#" onclick="window.parent.closeModal(); return false;" class="back-link">&larr; Back to Circuits</a>
+    
+    <h1>
+        {% if circuit.id %}
+            Edit Circuit: <span style="color: #002169;">{{ circuit.circuit_id }}</span>
+        {% else %}
+            Add New Circuit for <span style="color: #002169;">{{ customer.name }}</span>
+        {% endif %}
+    </h1>
+
+    <form id="save-form" action="{{ url_for('customer.save_circuit') }}" method="POST">
+        <input type="hidden" name="customer_id" value="{{ customer.id }}">
+        <input type="hidden" id="circuit_id_val_hidden" name="circuit_id" value="{{ circuit.id or '' }}">
+
+        <div class="main-form-grid"> {# Main grid for two columns #}
+            <div> {# Left Column #}
+                {# --- CIRCUIT DETAILS SECTION --- #}
+                <div class="form-section">
+                    <h3>Circuit Details</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="circuit_id_val">Circuit ID:</label>
+                            <input type="text" id="circuit_id_val" name="circuit_id_val" value="{{ circuit.circuit_id or '' }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="circuit_name">Circuit Name/Description:</label>
+                            <input type="text" id="circuit_name" name="circuit_name" value="{{ circuit.circuit_name or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="site_name">Site Name:</label>
+                            <input type="text" id="site_name" name="site_name" value="{{ circuit.site_name or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="status">Status:</label>
+                            <input type="text" id="status" name="status" value="{{ circuit.status or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="service_type">Service Type:</label>
+                            <input type="text" id="service_type" name="service_type" value="{{ circuit.service_type or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="circuit_type">Circuit Type:</label>
+                            <input type="text" id="circuit_type" name="circuit_type" value="{{ circuit.circuit_type or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="cir_pri">CIR PRI:</label>
+                            <input type="text" id="cir_pri" name="cir_pri" value="{{ circuit.cir_pri or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="access">Access:</label>
+                            <input type="text" id="access" name="access" value="{{ circuit.access or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="priority">Priority:</label>
+                            <input type="text" id="priority" name="priority" value="{{ circuit.priority or '' }}">
+                        </div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="notes">Notes:</label>
+                        <textarea id="notes" name="notes">{{ circuit.notes or '' }}</textarea>
+                    </div>
+                </div>
+
+                {# --- SCI SECTION --- #}
+                <div class="form-section">
+                    <h3>Service Catalog Item (SCI)</h3>
+                    <div class="form-group">
+                        <label for="sci_billing_name">Billing Name (Unique per Customer):</label>
+                        <input type="text" id="sci_billing_name" name="sci_billing_name" value="{{ sci.billing_name or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="sci_service_line">Service Line:</label>
+                        <input type="text" id="sci_service_line" name="sci_service_line" value="{{ sci.service_line or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="additional_info">Additional Info:</label>
+                        <textarea id="additional_info" name="additional_info">{{ sci.additional_info or '' }}</textarea>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="sci_cost_price">Cost Price:</label>
+                            <input type="text" id="sci_cost_price" name="sci_cost_price" value="{{ '$%.2f'|format(sci.datacom_cost_price|float) if sci.datacom_cost_price else '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="sci_sell_price">Sell Price:</label>
+                            <input type="text" id="sci_sell_price" name="sci_sell_price" value="{{ '$%.2f'|format(sci.customer_sell_price|float) if sci.customer_sell_price else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                {# --- VENDOR DETAILS SECTION --- #}
+                <div class="form-section">
+                    <h3>Vendor Details</h3>
+                    <div class="form-group">
+                        <label for="telco">Telco:</label>
+                        <input type="text" id="telco" name="telco" value="{{ circuit.telco or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="vendor_account_number">Vendor Account Number:</label>
+                        <input type="text" id="vendor_account_number" name="vendor_account_number" value="{{ circuit.vendor_account_number or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="audit_date">Last Audit Date:</label>
+                        <input type="text" value="{{ circuit.audit_date.strftime('%Y-%m-%d') if circuit.audit_date else 'N/A' }}" disabled class="read-only-field">
+                    </div>
+                </div>
+            </div> {# End Left Column #}
+
+            <div> {# Right Column #}
+                {# --- LINKED INVOICE DETAILS SECTION --- #}
+                <div class="form-section">
+                    <h3>Linked Invoice Items</h3>
+                    {% if invoice_dates %}
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="invoice_month_select">Invoice Month:</label>
+                        <select id="invoice_month_select" name="invoice_month">
+                            {% for date in invoice_dates %}
+                                <option value="{{ date }}" {% if date == selected_date %}selected{% endif %}>{{ date }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Invoice Supplier:</label>
+                        <input type="text" id="invoice_supplier" value="" class="read-only-field" disabled>
+                    </div>
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice Item</th>
+                                <th>Description</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoice-items-body">
+                            {# Populated by JavaScript #}
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td>Total for Month:</td>
+                                <td></td>
+                                <td id="monthly-total-cost"></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    {% else %}
+                        <p>No invoice items are currently linked to this circuit.</p>
+                    {% endif %}
+
+                    {% if circuit.id %}
+                    <div class="search-section">
+                        <h4>Link a New Invoice Item</h4>
+                        <div class="form-group">
+                            <label for="search_supplier_id">Supplier:</label>
+                            <select id="search_supplier_id">
+                                <option value="">All Suppliers</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="search_account_number_id">Account Number:</label>
+                            <select id="search_account_number_id">
+                                <option value="">All Accounts</option>
+                                {% for account in supplier_accounts %}
+                                <option value="{{ account.id }}" data-supplier-id="{{ account.supplier_id }}">{{ account.account_number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="search_billing_month">Billing Month:</label>
+                            <select id="search_billing_month">
+                                <option value="">All Months</option>
+                                {% for month in search_billing_month_options %}
+                                    <option value="{{ month }}">{{ month }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="invoice-search-input">Search by Billing Reference:</label>
+                            <input type="text" id="invoice-search-input" placeholder="e.g., INVOICE-1234">
+                        </div>
+                        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center;">
+                            <button type="button" class="button" id="search-invoice-items-button">Search</button>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="show-linked-checkbox">
+                                <label for="show-linked-checkbox">Show Linked</label>
+                            </div>
+                        </div>
+                        <div class="search-results" id="search-results">
+                            <p style="padding: 10px; color: #777;">Use the filters and search button to find unlinked invoice items.</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# --- REVIEW AND NOTES SECTION --- #}
+                <div class="form-section">
+                    <h3>Review & Notes</h3>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="review_flag" name="review_flag" {% if circuit.review_flag %}checked{% endif %}>
+                        <label for="review_flag">Flag for Review</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="review_notes">Review Notes:</label>
+                        <textarea id="review_notes" name="review_notes">{{ circuit.review_notes or '' }}</textarea>
+                    </div>
+                </div>
+            </div> {# End Right Column #}
+        </div> {# End Main Grid #}
+
+        <div class="button-group">
+            <button type="button" class="button" id="clear-review-button">Clear Review</button>
+            <div style="display: flex; gap: 10px;">
+                <a href="#" onclick="window.parent.closeModal(); return false;" class="button">Cancel</a>
+                <button type="submit" class="button">Save Circuit</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const circuitId = '{{ circuit.id or "" }}';
+        const customerId = '{{ customer.id }}';
+        const invoiceMonthSelect = document.getElementById('invoice_month_select');
+        const invoiceItemsBody = document.getElementById('invoice-items-body');
+        const monthlyTotalCostCell = document.getElementById('monthly-total-cost');
+        const invoiceSupplierInput = document.getElementById('invoice_supplier');
+        const saveForm = document.getElementById('save-form');
+        const clearReviewButton = document.getElementById('clear-review-button');
+        const reviewFlagCheckbox = document.getElementById('review_flag');
+        const reviewNotesTextarea = document.getElementById('review_notes');
+        const invoiceSearchInput = document.getElementById('invoice-search-input');
+        const searchResultsDiv = document.getElementById('search-results');
+        const searchSupplierSelect = document.getElementById('search_supplier_id');
+        const searchAccountSelect = document.getElementById('search_account_number_id');
+        const searchBillingMonthSelect = document.getElementById('search_billing_month');
+        const searchButton = document.getElementById('search-invoice-items-button');
+        const showLinkedCheckbox = document.getElementById('show-linked-checkbox');
+        
+        const monthlyTotalsFromBackend = {{ monthly_totals|tojson }};
+        const selectedDateFromBackend = '{{ selected_date }}';
+        const allSupplierAccounts = {{ supplier_accounts|tojson }};
+
+        // Filter account numbers based on selected supplier
+        searchSupplierSelect.addEventListener('change', function() {
+            const selectedSupplierId = this.value;
+            searchAccountSelect.innerHTML = '<option value="">All Accounts</option>';
+
+            allSupplierAccounts.forEach(account => {
+                if (selectedSupplierId === '' || String(account.supplier_id) === selectedSupplierId) {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = account.account_number;
+                    searchAccountSelect.appendChild(option);
+                }
+            });
+        });
+
+        // Set initial selected month for search filter if available
+        if (searchBillingMonthSelect && selectedDateFromBackend) {
+            searchBillingMonthSelect.value = selectedDateFromBackend;
+        }
+
+
+        function renderInvoiceDetails(selectedDate) {
+            const monthData = monthlyTotalsFromBackend[selectedDate];
+            if (monthData) {
+                invoiceItemsBody.innerHTML = '';
+                monthData.items.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.billing_reference} (ID: ${item.invoice_item_id})</td>
+                        <td>${item.line_description || 'N/A'}</td>
+                        <td>$${parseFloat(item.total_amount).toFixed(2)}</td>
+                        <td><button type="button" class="unlink-button" data-circuit-id="${item.circuit_id}" data-invoice-item-id="${item.invoice_item_id}">Unlink</button></td>
+                    `;
+                    invoiceItemsBody.appendChild(row);
+                });
+
+                invoiceSupplierInput.value = monthData.supplier_name;
+                monthlyTotalCostCell.textContent = `$${parseFloat(monthData.total_amount).toFixed(2)}`;
+            } else {
+                invoiceItemsBody.innerHTML = '<tr><td colspan="4">No items found for this month.</td></tr>';
+                invoiceSupplierInput.value = 'N/A';
+                monthlyTotalCostCell.textContent = 'N/A';
+            }
+        }
+
+        if (invoiceMonthSelect && selectedDateFromBackend) {
+            renderInvoiceDetails(selectedDateFromBackend);
+            
+            invoiceMonthSelect.addEventListener('change', function(event) {
+                renderInvoiceDetails(event.target.value);
+            });
+        }
+
+        // Add date stamp to review notes when form is submitted
+        saveForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            // Get the current notes
+            const currentNotes = reviewNotesTextarea.value;
+
+            // If notes exist and don't start with a timestamp, prepend one
+            if (currentNotes && !currentNotes.trim().startsWith('[')) {
+                const now = new Date();
+                const dateString = now.toLocaleString('en-NZ', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                reviewNotesTextarea.value = `[${dateString}]\n${currentNotes}`;
+            }
+            
+            // Manually gather form data into a JSON object
+            const jsonData = {
+                customer_id: customerId,
+                circuit_id: circuitId,
+                circuit_id_val: document.getElementById('circuit_id_val').value,
+                circuit_name: document.getElementById('circuit_name').value,
+                site_name: document.getElementById('site_name').value,
+                status: document.getElementById('status').value,
+                service_type: document.getElementById('service_type').value,
+                circuit_type: document.getElementById('circuit_type').value,
+                cir_pri: document.getElementById('cir_pri').value,
+                access: document.getElementById('access').value,
+                priority: document.getElementById('priority').value,
+                sci_billing_name: document.getElementById('sci_billing_name').value,
+                sci_service_line: document.getElementById('sci_service_line').value,
+                additional_info: document.getElementById('additional_info').value,
+                sci_cost_price: document.getElementById('sci_cost_price').value,
+                sci_sell_price: document.getElementById('sci_sell_price').value,
+                telco: document.getElementById('telco').value,
+                vendor_account_number: document.getElementById('vendor_account_number').value,
+                review_flag: document.getElementById('review_flag').checked,
+                review_notes: document.getElementById('review_notes').value,
+                notes: document.getElementById('notes').value
+            };
+
+            fetch(saveForm.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    window.parent.closeModal();
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                alert('An unexpected error occurred.');
+                console.error('AJAX Error:', error);
+            });
+        });
+
+        // New event listener for the "Clear Review" button
+        clearReviewButton.addEventListener('click', function() {
+            if (!circuitId) {
+                alert('Cannot clear review for a new circuit.');
+                return;
+            }
+            
+            // API call to clear the flag and notes
+            fetch('/customers/api/clear_review_flag', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ circuit_id: circuitId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update the UI
+                    reviewFlagCheckbox.checked = false;
+                    reviewNotesTextarea.value = '';
+                    alert('Review flag and notes cleared successfully.');
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                alert('An unexpected error occurred while clearing the review.');
+                console.error('Clear Review Error:', error);
+            });
+        });
+
+        // NEW: Search and Link functionality
+        let searchTimeout;
+
+        function performSearch() {
+            clearTimeout(searchTimeout);
+            const query = invoiceSearchInput.value.trim();
+            const supplierId = searchSupplierSelect.value;
+            const accountId = searchAccountSelect.value;
+            const billingMonth = searchBillingMonthSelect.value;
+            const showLinked = showLinkedCheckbox.checked;
+
+            if (!query && !supplierId && !accountId && !billingMonth && !showLinked) {
+                searchResultsDiv.innerHTML = '<p style="padding: 10px; color: #777;">Use the filters and search button to find unlinked invoice items.</p>';
+                return;
+            }
+
+            if (query.length < 3 && !supplierId && !accountId && !billingMonth && !showLinked) {
+                searchResultsDiv.innerHTML = '<p style="padding: 10px; color: #777;">Enter at least 3 characters to search, or select filters.</p>';
+                return;
+            }
+
+            let url = `/customers/api/search_invoice_items?query=${encodeURIComponent(query)}`;
+            if (supplierId) {
+                url += `&supplier_id=${encodeURIComponent(supplierId)}`;
+            }
+            if (accountId) {
+                url += `&account_number_id=${encodeURIComponent(accountId)}`;
+            }
+            if (billingMonth) {
+                url += `&billing_month=${encodeURIComponent(billingMonth)}`;
+            }
+            
+            if (showLinked) {
+                url += `&show_linked=true&circuit_id=${encodeURIComponent(circuitId)}`;
+            }
+
+            searchResultsDiv.innerHTML = '<p style="padding: 10px; color: #777;">Searching...</p>';
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                            searchResultsDiv.innerHTML = `<p style="padding: 10px; color: #d32f2f;">Error: ${data.message}</p>`;
+                        return;
+                    }
+                    if (data.length === 0) {
+                        const message = showLinked ?
+                            'No linked invoice items found for this circuit matching your criteria.' :
+                            'No unlinked invoice items found matching your criteria.';
+                        searchResultsDiv.innerHTML = `<p style="padding: 10px; color: #777;">${message}</p>`;
+                    } else {
+                        searchResultsDiv.innerHTML = '';
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.classList.add('search-item');
+                            div.innerHTML = `
+                                <strong>${item.billing_reference}</strong> (Supplier: ${item.supplier_name})<br>
+                                Description: ${item.line_description || 'N/A'}<br>
+                                Invoice Date: ${item.invoice_date}, Total Amount: $${item.total_amount.toFixed(2)}
+                                ${showLinked ? 
+                                    `<p style="color: #888; font-size: 0.85em; margin-top: 5px;">Already linked to this circuit. Unlink via supplier interface if needed.</p>` : 
+                                    `<button type="button" class="link-button" data-invoice-id="${item.id}">Link</button>`
+                                }
+                            `;
+                            searchResultsDiv.appendChild(div);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Search Error:', error);
+                    searchResultsDiv.innerHTML = `<p style="padding: 10px; color: #d32f2f;">An error occurred during search.</p>`;
+                });
+        }
+
+        searchButton.addEventListener('click', () => performSearch());
+        showLinkedCheckbox.addEventListener('change', () => performSearch());
+        
+        invoiceSearchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => performSearch(), 500); 
+        });
+        searchSupplierSelect.addEventListener('change', () => performSearch());
+        searchAccountSelect.addEventListener('change', () => performSearch());
+        searchBillingMonthSelect.addEventListener('change', () => performSearch());
+
+        searchResultsDiv.addEventListener('click', function(event) {
+            const linkButton = event.target.closest('.link-button');
+            if (linkButton) {
+                const invoiceItemId = linkButton.dataset.invoiceId;
+                fetch('/customers/api/link_invoice_item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ circuit_id: circuitId, invoice_item_id: invoiceItemId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        window.parent.closeModal();
+                    } else {
+                        alert(`Failed to link item: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Link Error:', error);
+                    alert('An error occurred while linking the item.');
+                });
+            }
+        });
+
+        document.addEventListener('click', function(event) {
+            const unlinkButton = event.target.closest('.unlink-button');
+            if (unlinkButton) {
+                if (confirm('Are you sure you want to unlink this invoice item? This will also clear the audit date for this circuit.')) {
+                    const unlinkCircuitId = unlinkButton.dataset.circuitId;
+                    const unlinkInvoiceItemId = unlinkButton.dataset.invoiceItemId;
+
+                    fetch('/customers/api/unlink_invoice_item', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ circuit_id: unlinkCircuitId, invoice_item_id: unlinkInvoiceItemId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert('Invoice item unlinked successfully! Page will now reload.');
+                            window.parent.closeModal();
+                        } else {
+                            alert(`Failed to unlink item: ${data.message}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Unlink Error:', error);
+                        alert('An error occurred while unlinking the item.');
+                    });
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

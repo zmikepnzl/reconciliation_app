@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Management{% endblock %}
+
+{% block head_styles %}
+<style>
+    .list-container { max-width: 80%; margin: 20px auto; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    /* Styles from supplier_setup.html for consistency */
+    .list-item-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        margin-bottom: 10px;
+    }
+    .list-item-row {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f2f6fc;
+        padding: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px 20px;
+        transition: background-color 0.2s ease-in-out;
+    }
+    .list-item-link:hover .list-item-row {
+        background-color: #e6ecfa;
+        border-color: #b8c6e0;
+    }
+    .header-main-info { font-size: 1.2em; color: #002169; flex-grow: 1; }
+    .header-stat { font-size: 0.9em; font-weight: normal; color: #555; }
+    .audit-counts span { padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; margin-right: 4px; font-size: 0.9em; }
+    .count-green { background-color: #28a745; }
+    .count-orange { background-color: #fd7e14; }
+    .count-red { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="list-container">
+    <div class="page-header">
+        <h2>Customer Management</h2>
+        <a href="{{ url_for('customer.manage_customer') }}" class="button">Add New Customer</a>
+    </div>
+
+    <div id="customers-list">
+        {% for customer in customers %}
+        <a href="{{ url_for('customer.customer_details', customer_id=customer.id) }}" class="list-item-link">
+            <div class="list-item-row">
+                <div class="header-main-info">{{ customer.name }}</div>
+                <div class="header-stat"><strong>Circuits:</strong> {{ customer.circuit_count }}</div>
+                <div class="header-stat"><strong>SCIs:</strong> {{ customer.sci_count }}</div>
+                <div class="audit-counts">
+                    <strong>Audit:</strong>
+                    <span class="count-green" title="Audited Recently">{{ customer.audited_recent_count }}</span>
+                    <span class="count-orange" title="Audit is Old">{{ customer.audited_old_count }}</span>
+                    <span class="count-red" title="Unaudited">{{ customer.unaudited_count }}</span>
+                </div>
+            </div>
+        </a>
+        {% else %}
+        <div class="list-item-row" style="justify-content: center;">
+            <p>No customers found.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

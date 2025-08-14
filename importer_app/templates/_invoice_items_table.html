@@ -1,0 +1,28 @@
+<table>
+    <thead>
+        <tr>
+            <th>Billing Reference</th>
+            <th>Account Number</th>
+            <th>Linked</th>
+            <th>Linked Circuit ID</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in invoice_items %}
+        <tr data-item-id="{{ item.id }}">
+            <td>{{ item.billing_reference }}</td>
+            <td>{{ item.account_number or 'N/A' }}</td>
+            <td>{{ 'Yes' if item.is_linked else 'No' }}</td>
+            <td>{{ item.linked_circuit_ids or 'N/A' }}</td>
+            <td>
+                <button onclick="selectInvoiceItem('{{ item.id }}', '{{ item.billing_reference }}', this.closest('tr'))">Select</button>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align: center; color: #777;">No invoice items found matching the criteria.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

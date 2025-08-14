@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Supplier Management{% endblock %}
+
+{% block head_styles %}
+<style>
+    .list-container { max-width: 80%; margin: 20px auto; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    /* Simplified styles for a non-accordion list */
+    .supplier-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        margin-bottom: 10px;
+    }
+    .supplier-row {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f2f6fc;
+        padding: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px 20px;
+        transition: background-color 0.2s ease-in-out;
+    }
+    .supplier-link:hover .supplier-row {
+        background-color: #e6ecfa;
+        border-color: #b8c6e0;
+    }
+    .header-main-info { font-size: 1.2em; color: #002169; flex-grow: 1; }
+    .header-stat { font-size: 0.9em; font-weight: normal; color: #555; }
+    .audit-counts span { padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; margin-right: 4px; font-size: 0.9em; }
+    .count-green { background-color: #28a745; }
+    .count-orange { background-color: #fd7e14; }
+    .count-red { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="list-container">
+    <div class="page-header">
+        <h2>Existing Suppliers</h2>
+        <a href="{{ url_for('supplier_setup.manage_supplier') }}" class="button">Add New Supplier</a>
+    </div>
+
+    <div id="suppliers-list">
+        {% for supplier in suppliers %}
+        <a href="{{ url_for('supplier_setup.manage_supplier', supplier_id=supplier.id) }}" class="supplier-link">
+            <div class="supplier-row">
+                <div class="header-main-info">{{ supplier.name }}</div>
+                <div class="header-stat"><strong>Accounts:</strong> {{ supplier.account_count }}</div>
+                <div class="header-stat"><strong>Total Items:</strong> {{ supplier.total_items }}</div>
+                <div class="header-stat"><strong>Unlinked:</strong> {{ supplier.unlinked_items }}</div>
+                <div class="audit-counts">
+                    <strong>Audit:</strong>
+                    <span class="count-green" title="Audited Recently">{{ supplier.audited_recent_count }}</span>
+                    <span class="count-orange" title="Audit is Old">{{ supplier.audited_old_count }}</span>
+                    <span class="count-red" title="Unaudited">{{ supplier.unaudited_count }}</span>
+                </div>
+            </div>
+        </a>
+        {% else %}
+        <div class="form-section" style="text-align: center;">
+            <p>No suppliers found.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

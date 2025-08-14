@@ -1,0 +1,54 @@
+version: "3.4"
+
+networks:
+  reconciliation-net:
+
+services:
+  db:
+    image: postgres:13
+    container_name: reconciliation_db
+    hostname: db
+    environment:
+      - POSTGRES_DB=reconciliation_data
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - reconciliation-net
+
+  importer:
+    build: ./importer_app
+    container_name: reconciliation_importer_tool
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/reconciliation_data
+    ports:
+      - "8002:8000"
+    depends_on:
+      - db
+    volumes:
+      - baserow_importer_data:/app/uploads
+      - ./backups:/app/backups
+      - ./importer_app:/app
+    restart: unless-stopped
+    command: gunicorn --bind 0.0.0.0:8000 --access-logfile - --timeout 300 --workers 1 --log-level debug --limit-request-line 8192 app:app
+    networks:
+      - reconciliation-net
+
+  adminer:
+    image: adminer
+    container_name: reconciliation_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - reconciliation-net
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  baserow_importer_data:

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice Lines{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .list-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #f2f6fc; }
+    .back-link { display: block; margin-bottom: 20px; font-weight: bold; color: #002169; text-decoration: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="javascript:history.back()" class="back-link">&larr; Back to Invoice Items</a> {# This will take the user back to the previous page #}
+<div class="page-header">
+    <h1>Invoice Line Items</h1>
+</div>
+
+<div class="list-section">
+    {% if lines %}
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total Amount</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in lines %}
+            <tr>
+                <td>{{ line.description or 'N/A' }}</td>
+                <td>{{ line.quantity or 'N/A' }}</td>
+                <td>{{ "%.2f"|format(line.unit_price) if line.unit_price is not none else 'N/A' }}</td>
+                <td>{{ "%.2f"|format(line.total_amount) if line.total_amount is not none else 'N/A' }}</td>
+                <td>{{ line.start_date.strftime('%Y-%m-%d') if line.start_date else 'N/A' }}</td>
+                <td>{{ line.end_date.strftime('%Y-%m-%d') if line.end_date else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No line items found for this invoice item.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Lines for {{ mapping_rule.mapping_name }}{% endblock %}
+
+{% block head_styles %}
+<style>
+    .page-container { max-width: 95%; margin: 20px auto; }
+    .section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
+    h3 { margin-top: 0; text-transform: capitalize; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9em; table-layout: fixed; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
+    th { background-color: #f2f6fc; }
+    .rule-table input, .rule-table select, .details-section input, .details-section textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .button-bar { margin: 20px 0; display: flex; justify-content: flex-end; gap: 10px; }
+    .required-field::after { content: ' *'; color: red; }
+    .hidden { display: none; }
+    .disabled-form { opacity: 0.5; pointer-events: none; }
+    .sample-output-cell { color: #0056b3; font-weight: bold; font-style: italic; transition: all 0.2s ease-in-out; }
+    .formula-builder { display: flex; flex-direction: column; gap: 5px; }
+    .formula-builder textarea { width: 100%; height: 60px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: center; }
+    .form-group { margin: 0; }
+    /* Styles for validation feedback */
+    .output-warning { color: #fd7e14 !important; border-left: 3px solid #fd7e14; }
+    .output-error { color: #dc3545 !important; border-left: 3px solid #dc3545; font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <a href="{{ url_for('supplier_setup.manage_supplier', supplier_id=mapping_rule.supplier_id) }}" class="button" style="background-color: #6c757d;">&larr; Back to Supplier</a>
+    <h1>Manage Mapping Rules</h1>
+
+    <form action="{{ url_for('mapping_manager.save_mapping_lines_set') }}" method="POST">
+        <input type="hidden" name="mapping_id" value="{{ mapping_rule.id }}">
+
+        <div class="section details-section">
+            <h3>Mapping Details</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="mapping_name" class="required-field">Mapping Name</label>
+                    <input type="text" id="mapping_name" name="mapping_name" value="{{ mapping_rule.mapping_name or '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="1">{{ mapping_rule.description or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Upload a Sample CSV</h3>
+            <p>Upload a sample CSV file to enable the form and populate column dropdowns for accurate mapping.</p>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                <input type="file" id="csv-file-input" accept=".csv" style="flex-grow: 1;">
+                <button type="button" onclick="processCsvFile()">Process Sample CSV</button>
+            </div>
+            <div id="sample-data-container" class="{% if not sample_csv_headers %}hidden{% endif %}">
+                <h4>Sample Data Preview:</h4>
+                <table id="sample-data-table">
+                    <thead><tr>{% for header in sample_csv_headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
+                    <tbody><tr>{% for cell in sample_csv_first_row %}<td>{{ cell }}</td>{% endfor %}</tr></tbody>
+                </table>
+                <div id="ignore-rule-warning" class="hidden" style="color: #d9534f; font-weight: bold; margin-top: 10px;">
+                    Warning: The current sample data row matches an ignore rule.
+                </div>
+            </div>
+        </div>
+
+        <div id="mapping-form-container" class="{% if not sample_csv_headers %}disabled-form{% endif %}">
+            <div class="button-bar">
+                <button type="submit" class="button">Save All Changes</button>
+            </div>
+
+            {% for role_key, rules in full_rule_set.items() %}
+            <div class="section">
+                <h3>{{ role_key.replace('_', ' ') }} Rules</h3>
+                <table class="rule-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 18%;">Destination Field</th>
+                            <th style="width: 12%;">Source Type</th>
+                            <th>Source Details</th>
+                            <th style="width: 18%;">Transformation</th>
+                            <th style="width: 15%;">Sample Output</th>
+                            <th style="width: 8%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rule in rules %}
+                            {% if not rule.is_hidden %}
+                            <tr data-role="{{ rule.field_role }}" data-name="{{ rule.name }}">
+                                <input type="hidden" name="rules.{{ rule.id }}.id" value="{{ rule.id }}">
+                                <input type="hidden" name="rules.{{ rule.id }}.field_role" value="{{ rule.field_role }}">
+                                <input type="hidden" name="rules.{{ rule.id }}.name" value="{{ rule.name }}">
+                                <input type="hidden" name="rules.{{ rule.id }}.display_name" value="{{ rule.display_name }}">
+                                <td class="{{ 'required-field' if rule.required }} rule-display-name">{{ rule.display_name }}</td>
+                                {% if rule.name == 'billing_month' %}
+                                <td colspan="2">
+                                    <input type="hidden" name="rules.{{ rule.id }}.source_type" value="Text Override">
+                                    <select name="rules.{{ rule.id }}.static_value" onchange="updateRowOnInputChange(this)">
+                                        <option value="advance" {% if rule.static_value == 'advance' %}selected{% endif %}>Billed in Advance</option>
+                                        <option value="arrears" {% if rule.static_value == 'arrears' %}selected{% endif %}>Billed in Arrears</option>
+                                        <option value="current" {% if rule.static_value == 'current' %}selected{% endif %}>Current</option>
+                                    </select>
+                                </td>
+                                {% else %}
+                                <td>
+                                    <select name="rules.{{ rule.id }}.source_type" class="source-type-select" onchange="updateRowOnInputChange(this)">
+                                        {% for type_option in (rule.source_type_options or '').split(',') %}
+                                            <option value="{{ type_option }}" {% if rule.source_type == type_option %}selected{% endif %}>{{ type_option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <div class="source-input csv-input {% if rule.source_type != 'CSV' %}hidden{% endif %}">
+                                        <select name="rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown" onchange="updateRowOnInputChange(this)">
+                                            <option value="">-- Select Column --</option>
+                                            {% for header in sample_csv_headers %}<option value="{{ header }}" {% if rule.source_csv_column == header %}selected{% endif %}>{{ header }}</option>{% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="source-input csvformula-input {% if rule.source_type != 'CSV Formula' %}hidden{% endif %}">
+                                        <div class="formula-builder">
+                                            <select multiple class="csv-header-dropdown" onchange="insertColumnIntoFormula(this, 'formula-textarea-{{ rule.id }}')">
+                                                <option value="">-- Insert Column(s) --</option>
+                                                {% for header in sample_csv_headers %}<option value="{{ header }}">{{ header }}</option>{% endfor %}
+                                            </select>
+                                            <textarea id="formula-textarea-{{ rule.id }}" name="rules.{{ rule.id }}.formula_template" placeholder="Build formula using {Column Name}" onchange="updateRowOnInputChange(this)" onkeyup="updateRowOnInputChange(this)">{{ rule.formula_template or '' }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="source-input textoverride-input {% if rule.source_type != 'Text Override' %}hidden{% endif %}">
+                                        <input type="text" name="rules.{{ rule.id }}.static_value" value="{{ rule.static_value or '' }}" onkeyup="updateRowOnInputChange(this)">
+                                    </div>
+                                    <div class="source-input link-input {% if rule.source_type != 'Link' %}hidden{% endif %}">
+                                        <p><strong>Source Column for Lookup:</strong></p>
+                                        <select name="rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown" onchange="updateRowOnInputChange(this)">
+                                            <option value="">-- Select Column --</option>
+                                            {% for header in sample_csv_headers %}<option value="{{ header }}" {% if rule.source_csv_column == header %}selected{% endif %}>{{ header }}</option>{% endfor %}
+                                        </select>
+                                        <p style="margin-top:10px;">Links to Table: <strong>{{ rule.link_table_lookup or 'N/A' }}</strong></p>
+                                        <p>Using Field: <strong>{{ rule.link_field_lookup or 'N/A' }}</strong></p>
+                                    </div>
+                                </td>
+                                {% endif %}
+                                <td class="transformation-cell">
+                                    <select name="rules.{{ rule.id }}.transformation" onchange="updateRowOnInputChange(this)">
+                                        {% for t_option in rule.allowed_transformations %}
+                                            <option value="{{ t_option }}" {% if rule.transformation == t_option %}selected{% endif %}>{{ t_option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="text" name="rules.{{ rule.id }}.transformation_args" value="{{ rule.transformation_args or '' }}" placeholder="Argument (e.g., date format)" style="margin-top: 5px;" onkeyup="updateRowOnInputChange(this)">
+                                </td>
+                                <td class="sample-output-cell" id="preview-{{ rule.id }}">(Transformed Value)</td>
+                                <td><button type="button" onclick="resetRow(this)">Reset</button></td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+            <div class="button-bar"><button type="submit" class="button">Save All Changes</button></div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const MAPPING_ID = {{ mapping_rule.id }};
+        let sampleHeaders = {{ sample_csv_headers|tojson }};
+        let sampleFirstRow = {{ sample_csv_first_row|tojson }};
+        const formContainer = document.getElementById('mapping-form-container');
+        const existingIgnoreRules = {{ existing_ignore_rules|tojson }};
+        const masterRulesData = {{ full_rule_set|tojson }};
+
+        window.updateRowOnInputChange = function(element) {
+            const row = element.closest('tr');
+            if (!row) return;
+            toggleSourceInputs(row);
+            updateSampleOutput(row);
+        };
+
+        function toggleSourceInputs(row) {
+            const sourceTypeSelect = row.querySelector('.source-type-select');
+            if (!sourceTypeSelect) return;
+            const selectedType = sourceTypeSelect.value.toLowerCase().replace(/ /g, '');
+            row.querySelectorAll('.source-input').forEach(input => input.classList.add('hidden'));
+            const target = row.querySelector(`.${selectedType}-input`);
+            if (target) target.classList.remove('hidden');
+        }
+
+        function getRawValue(row) {
+            let value = '';
+            if (!sampleHeaders || !sampleFirstRow) return value;
+            const choiceSelect = row.querySelector('td[colspan="2"] select');
+            if (choiceSelect) { return choiceSelect.value; }
+            const sourceTypeSelect = row.querySelector('.source-type-select');
+            if (!sourceTypeSelect) return '';
+            const sourceType = sourceTypeSelect.value;
+            if (sourceType === 'CSV' || sourceType === 'Link') {
+                const selectedHeader = row.querySelector('.csv-header-dropdown').value;
+                const headerIndex = sampleHeaders.indexOf(selectedHeader);
+                if (headerIndex !== -1) value = sampleFirstRow[headerIndex];
+            } else if (sourceType === 'CSV Formula') {
+                let formula = row.querySelector('.formula-builder textarea').value;
+                value = formula.replace(/\{([^}]+)\}/g, (match, headerName) => {
+                    const headerIndex = sampleHeaders.indexOf(headerName.trim());
+                    return headerIndex !== -1 ? sampleFirstRow[headerIndex] : match;
+                });
+            } else if (sourceType === 'Text Override') {
+                value = row.querySelector('input[name$=".static_value"]').value;
+            }
+            return value;
+        }
+
+        async function updateSampleOutput(row) {
+            const outputCell = row.querySelector('.sample-output-cell');
+            if (!outputCell) return;
+            outputCell.textContent = '...';
+            outputCell.classList.remove('output-warning', 'output-error');
+            outputCell.title = '';
+            const sourceTypeSelect = row.querySelector('.source-type-select');
+            const sourceType = sourceTypeSelect ? sourceTypeSelect.value : (row.querySelector('input[name$=".name"][value="billing_month"]') ? 'Text Override' : 'None');
+            const rawValue = getRawValue(row);
+            if (sourceType === 'Link') {
+                outputCell.textContent = rawValue ? `Find ID for: "${rawValue}"` : '(Select a source column)';
+                outputCell.title = "During import, the system will find the database ID for this value.";
+                return;
+            }
+            const transformSelect = row.querySelector('select[name$=".transformation"]');
+            const transformation = transformSelect ? transformSelect.value : 'None';
+            const argsInput = row.querySelector('input[name$=".transformation_args"]');
+            const transformationArgs = argsInput ? argsInput.value : '';
+            const destinationField = row.dataset.name;
+            const fieldRole = row.dataset.role;
+            if (transformation === 'None' || !rawValue) {
+                outputCell.textContent = rawValue;
+                return;
+            }
+            try {
+                const response = await fetch("{{ url_for('mapping_manager.transform_preview') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        raw_value: rawValue,
+                        transformation: transformation,
+                        transformation_args: transformationArgs,
+                        destination_field: destinationField,
+                        field_role: fieldRole
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    outputCell.textContent = result.transformed_value;
+                    if (result.validation_status && result.validation_status !== 'ok') {
+                        outputCell.classList.add('output-' + result.validation_status);
+                    }
+                    outputCell.title = result.validation_message || '';
+                } else {
+                    outputCell.textContent = `Error: ${result.error}`;
+                    outputCell.classList.add('output-error');
+                    outputCell.title = `API Error: ${result.error}`;
+                }
+            } catch (error) {
+                outputCell.textContent = 'Error calling API';
+                outputCell.classList.add('output-error');
+                outputCell.title = `Fetch Error: ${error}`;
+            }
+        }
+        
+        function initializeRuleValues() {
+            document.querySelectorAll('.rule-table tbody tr').forEach(row => {
+                const role = row.dataset.role;
+                const name = row.dataset.name;
+                if (!role || !name || !masterRulesData[role]) return;
+                
+                const masterRule = masterRulesData[role].find(r => r.name === name);
+                if (!masterRule) return;
+
+                const csvDropdowns = row.querySelectorAll('select[name$=".source_csv_column"]');
+                csvDropdowns.forEach(dropdown => {
+                    if (dropdown && masterRule.source_csv_column) {
+                        dropdown.value = masterRule.source_csv_column;
+                    }
+                });
+            });
+        }
+        
+        // --- All other functions (processCsvFile, resetRow, etc.) should be here ---
+        // (Assuming they are already present in your file from previous steps)
+        window.processCsvFile = function() { /* ... full function ... */ };
+        window.resetRow = function(button) { /* ... full function ... */ };
+        // etc.
+
+        // --- INITIAL PAGE SETUP ---
+        if (sampleHeaders && sampleHeaders.length > 0) {
+            formContainer.classList.remove('disabled-form');
+        } else {
+            formContainer.classList.add('disabled-form');
+        }
+        document.querySelectorAll('.rule-table tr').forEach(row => toggleSourceInputs(row));
+
+        // CORRECTED LOGIC: Initialize dropdown values first, then trigger the preview update for each row.
+        initializeRuleValues(); 
+
+        document.querySelectorAll('.rule-table tbody tr').forEach(row => {
+            updateSampleOutput(row);
+        });
+
+    });
+</script>
+{% endblock %}
