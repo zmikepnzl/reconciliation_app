@@ -126,38 +126,49 @@
         </div>
     </div>
 
-    <div>
-        <div class="form-section">
-            <h3>Supplier Accounts</h3>
-            <div id="accounts-list">
-                {% for account in accounts %}
-                <div class="account-item">
-                    <div class="account-header" onclick="toggleAccount(this)">
-                        <div class="header-main-info">{{ account.account_number }}</div>
-                        <div class="header-stat"><strong>Last Invoice Imported:</strong> {{ account.last_invoice_month.strftime('%b %Y') if account.last_invoice_month else 'N/A' }}</div>
-                        <div class="header-stat"><strong>Total Items:</strong> {{ account.total_items_count }}</div>
-                        <div class="header-stat"><strong>Linked:</strong> {{ account.linked_items_count }} / <strong>Unlinked:</strong> {{ account.unlinked_items_count }}</div>
-                        <div class="audit-counts"><strong>Audit:</strong><span class="count-green" title="Audited Recently">{{ account.audited_recent_count }}</span><span class="count-orange" title="Audit is Old">{{ account.audited_old_count }}</span><span class="count-red" title="Unaudited">{{ account.unaudited_count }}</span></div>
-                    </div>
-                    <div class="account-body">
-                        {% for month in account.months %}
-                        <div class="invoice-month-item">
-                            <a href="{{ url_for('supplier_setup.view_account_items', account_id=account.id, invoice_date=month.billing_month_obj.strftime('%Y-%m-%d')) }}" class="month-link">{{ month.billing_month_obj.strftime('%B %Y') }}</a>
-                            <div class="month-info">
-                                <span><strong>Invoice Date:</strong> {{ month.invoice_date_obj.strftime('%Y-%m-%d') if month.invoice_date_obj else 'N/A' }}</span>
-                                <span><strong>Total Items:</strong> {{ month.item_count }}</span>
-                                <span><strong>Invoice Total:</strong> ${{ '%.2f'|format(month.monthly_total) }}</span>
-                            </div>
-                        </div>
-                        {% else %}<p>No monthly invoice data found for this account.</p>{% endfor %}
-                    </div>
-                </div>
-                {% else %}
-                <p>No accounts found for this supplier.</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
+	<div>
+		<div class="form-section">
+			<h3>Supplier Accounts</h3>
+			<div id="accounts-list">
+				{% for account in accounts %}
+				<div class="account-item">
+					<div class="account-header" onclick="toggleAccount(this)">
+						<div class="header-main-info">{{ account.account_number }}</div>
+						<div class="header-stat"><strong>Last Invoice Imported:</strong> {{ account.last_invoice_month.strftime('%b %Y') if account.last_invoice_month else 'N/A' }}</div>
+						<div class="header-stat"><strong>Total Items:</strong> {{ account.total_items_count }}</div>
+						<div class="header-stat"><strong>Linked:</strong> {{ account.linked_items_count }} / <strong>Unlinked:</strong> {{ account.unlinked_items_count }}</div>
+						<div class="audit-counts"><strong>Audit:</strong><span class="count-green" title="Audited Recently">{{ account.audited_recent_count }}</span><span class="count-orange" title="Audit is Old">{{ account.audited_old_count }}</span><span class="count-red" title="Unaudited">{{ account.unaudited_count }}</span></div>
+					</div>
+					<div class="account-body">
+						{% for month in account.months | reverse %}
+						{% set is_last = loop.last %}
+						{% set previous_month = account.months[loop.index0 + 1] if not is_last else None %}
+						{% set current_item_count = month.item_count or 0 %}
+						{% set previous_item_count = previous_month.item_count or 0 if previous_month else 0 %}
+						{% set item_difference = current_item_count - previous_item_count %}
+						{% set current_sum_total = month.monthly_total or 0 %}
+						{% set previous_sum_total = previous_month.monthly_total or 0 if previous_month else 0 %}
+						{% set variance = current_sum_total - previous_sum_total %}
+						<div class="invoice-month-item">
+							<a href="{{ url_for('supplier_setup.view_account_items', account_id=account.id, invoice_date=month.billing_month_obj.strftime('%Y-%m-%d')) }}" class="month-link">{{ month.billing_month_obj.strftime('%B %Y') }}</a>
+							<div class="month-info">
+								<span><strong>Invoice No:</strong> {{ month.invoice_number or 'N/A' }}</span>
+								<span><strong>Invoice Date:</strong> {{ month.invoice_date_obj.strftime('%Y-%m-%d') if month.invoice_date_obj else 'N/A' }}</span>
+								<span><strong>Items:</strong> {{ current_item_count }} ({% if item_difference > 0 %}+{{ item_difference }}{% elif item_difference < 0 %}{{ item_difference }}{% else %}+0{% endif %})</span>
+								<span class="month-financials">
+									<strong>Sum Total:</strong> ${{ '%.2f'|format(current_sum_total) }} ({% if variance > 0 %}+${{ '%.2f'|format(variance) }}{% elif variance < 0 %}-${{ '%.2f'|format(variance|abs) }}{% else %}+0{% endif %})
+								</span>
+							</div>
+						</div>
+						{% endfor %}
+					</div>
+				</div>
+				{% else %}
+				<p>No accounts found for this supplier.</p>
+				{% endfor %}
+			</div>
+		</div>
+	</div>
 </div>
 {% endblock %}
 

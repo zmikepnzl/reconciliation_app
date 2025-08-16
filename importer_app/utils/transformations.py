@@ -29,8 +29,9 @@ def apply_transformation(value, transformation):
             return None
     if t in ["todate", "todate(iso)"]:
         try:
-            # CORRECTED: Use dayfirst=True to correctly parse DD/MM/YYYY dates
-            dt = pd.to_datetime(value, errors="coerce", dayfirst=True)
+            # FIX: Explicitly specify the format to correctly parse YYYY/MM/DD dates
+            # and avoid the UserWarning.
+            dt = pd.to_datetime(value, format="%Y/%m/%d", errors="coerce")
             return dt.strftime("%Y-%m-%d") if pd.notna(dt) else None
         except Exception:
             return None

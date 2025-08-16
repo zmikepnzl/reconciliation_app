@@ -12,7 +12,6 @@ from psycopg2 import errors
 from services.importer_invoice import import_invoice_csv
 import io
 
-
 # --- Blueprint Setup ---
 supplier_setup_bp = Blueprint("supplier_setup", __name__, template_folder="../../templates")
 
@@ -94,31 +93,36 @@ def manage_supplier(supplier_id=None):
             accounts_summary_data = client._execute_query(accounts_summary_sql, (supplier_id,), fetch='all')
 
             accounts = {row['id']: dict(row, months=[]) for row in accounts_summary_data}
-
-            # QUERY 2: Corrected JOIN path (sih -> sil -> sii)
+            
+            # QUERY 2: Corrected to sum from supplier_invoice_lines and added sih.total_amount to GROUP BY
             monthly_data_sql = """
                 SELECT
                     sa.id AS account_id,
                     sih.billing_month,
+                    sih.invoice_number,
                     MAX(sih.invoice_date) as invoice_date,
-                    COALESCE(SUM(sih.total_amount), 0.0) as monthly_total,
+                    sih.total_amount as monthly_total_from_header,
+                    COALESCE(SUM(sil.total_amount), 0.0) as monthly_total,
                     COUNT(DISTINCT sii.id) as item_count
                 FROM supplier_account sa
                 LEFT JOIN supplier_invoice_headers sih ON sa.id = sih.account_number_id
                 LEFT JOIN supplier_invoice_lines sil ON sih.id = sil.invoice_header_id
                 LEFT JOIN supplier_invoice_items sii ON sil.item_id = sii.id
                 WHERE sa.supplier_id = %s AND sih.billing_month IS NOT NULL
-                GROUP BY sa.id, sih.billing_month
+                GROUP BY sa.id, sih.billing_month, sih.invoice_number, sih.total_amount
                 ORDER BY sa.id, sih.billing_month DESC;
             """
             monthly_data = client._execute_query(monthly_data_sql, (supplier_id,), fetch='all')
             
+            # New logic to calculate month-over-month differences and variance
             for row in monthly_data:
                 acc_id = row['account_id']
                 if acc_id in accounts:
                     accounts[acc_id]['months'].append({
                         'billing_month_obj': row['billing_month'],
                         'invoice_date_obj': row['invoice_date'],
+                        'invoice_number': row['invoice_number'],
+                        'monthly_total_from_header': row['monthly_total_from_header'],
                         'monthly_total': row['monthly_total'],
                         'item_count': row['item_count']
                     })
@@ -129,7 +133,6 @@ def manage_supplier(supplier_id=None):
         return redirect(url_for('supplier_setup.index'))
         
     return render_template("manage_supplier.html", supplier=supplier, mappings=mappings, accounts=list(accounts.values()))
-
 
 @supplier_setup_bp.route("/supplier/save", methods=["POST"])
 def save_supplier():
@@ -251,7 +254,6 @@ def import_invoice(supplier_id):
     
     return redirect(url_for('supplier_setup.manage_supplier', supplier_id=supplier_id))
 
-
 # --- view_account_items, API endpoints, etc. are below and unchanged ---
 
 @supplier_setup_bp.route("/supplier/view_items/<int:account_id>")
@@ -348,11 +350,11 @@ def view_account_items(account_id):
         logging.error(f"Failed to load invoice items for account ID {account_id}: {traceback.format_exc()}")
     
     return render_template("supplier_account_items.html",
-                           account=account, invoice_items=invoice_items, supplier=supplier,
-                           invoice_dates=invoice_dates, header_info=header_info,
-                           selected_date=invoice_date_filter, billing_ref_filter=billing_ref_filter,
-                           link_status_filter=link_status_filter, audit_status_filter=audit_status_filter,
-                           flagged_filter=flagged_filter, three_months_ago=three_months_ago)
+                            account=account, invoice_items=invoice_items, supplier=supplier,
+                            invoice_dates=invoice_dates, header_info=header_info,
+                            selected_date=invoice_date_filter, billing_ref_filter=billing_ref_filter,
+                            link_status_filter=link_status_filter, audit_status_filter=audit_status_filter,
+                            flagged_filter=flagged_filter, three_months_ago=three_months_ago)
 
 @supplier_setup_bp.route("/supplier/manage_item/<int:item_id>")
 def manage_invoice_item(item_id):
@@ -368,7 +370,7 @@ def manage_invoice_item(item_id):
             supplier = client.get_row_by_id("suppliers", item['supplier_id'])
             
             invoice_lines_sql = """
-                SELECT sil.*, sih.invoice_date
+                SELECT sil.*, sih.invoice_date, sih.invoice_number, sih.due_date, sih.total_amount
                 FROM supplier_invoice_lines sil
                 JOIN supplier_invoice_headers sih ON sil.invoice_header_id = sih.id
                 WHERE sil.item_id = %s
@@ -385,12 +387,56 @@ def manage_invoice_item(item_id):
             """
             linked_circuits = client._execute_query(linked_circuits_sql, (item_id,), fetch='all')
 
+            # Get header info from the first invoice line, as items can only belong to one header
+            header_info = {
+                'invoice_number': invoice_lines[0]['invoice_number'] if invoice_lines else 'N/A',
+                'due_date': invoice_lines[0]['due_date'].strftime('%Y-%m-%d') if invoice_lines and invoice_lines[0]['due_date'] else 'N/A',
+                'total_amount': invoice_lines[0]['total_amount'] if invoice_lines else 'N/A',
+            }
+
     except Exception as e:
         logging.error(f"Failed to load invoice item {item_id}: {traceback.format_exc()}")
         return f"<p>An error occurred: {e}</p>"
 
-    return render_template("manage_invoice_item.html", item=item, supplier=supplier, account=account,
-                           invoice_lines=invoice_lines, linked_circuits=linked_circuits)
+    return render_template("manage_invoice_item.html", 
+                           item=item, 
+                           supplier=supplier, 
+                           account=account,
+                           invoice_lines=invoice_lines, 
+                           linked_circuits=linked_circuits,
+                           header_info=header_info)
+                            
+@supplier_setup_bp.route("/supplier/delete_invoice_item/<int:item_id>", methods=["POST"])
+def delete_invoice_item(item_id):
+    """
+    Deletes an invoice item and its associated invoice lines.
+    
+    This function first deletes any linked records in the `circuit_invoice_links` table,
+    then all associated records in `supplier_invoice_lines`, and finally the `supplier_invoice_items`
+    record itself. This maintains database integrity and prevents orphaned records.
+    """
+    try:
+        with DBClient() as client:
+            # Get the account ID for redirection
+            item = client.get_row_by_id("supplier_invoice_items", item_id)
+            if not item:
+                flash("Invoice item not found.", "error")
+                return redirect(url_for('supplier_setup.index'))
+            account_id = item['account_number_id']
+
+            # Delete associated records in other tables
+            client.delete_row_where("circuit_invoice_links", "invoice_item_id = %s", (item_id,))
+            client.delete_row_where("supplier_invoice_lines", "item_id = %s", (item_id,))
+
+            # Delete the invoice item itself
+            client.delete_row("supplier_invoice_items", item_id)
+
+            flash(f"Invoice item '{item.get('billing_reference', 'Unknown')}' and its lines have been deleted.", "success")
+            return redirect(url_for('supplier_setup.view_account_items', account_id=account_id))
+    except Exception as e:
+        flash(f"An error occurred while deleting the invoice item: {e}", "error")
+        logging.error(f"Failed to delete invoice item {item_id}: {traceback.format_exc()}")
+        return redirect(url_for('supplier_setup.index'))
 
 @supplier_setup_bp.route("/supplier/bulk_audit_items", methods=["POST"])
 def bulk_audit_items():

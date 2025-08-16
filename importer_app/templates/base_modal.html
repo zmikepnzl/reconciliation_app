@@ -9,19 +9,21 @@
         body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
-            background-color: #fff; /* Modals don't need the grey background */
-            padding: 15px;
+            background-color: #fff;
+            padding: 10px;
         }
         h1, h2, h3 { 
             color: #012169; 
+            margin-top: 0;
+            margin-bottom: 10px;
         }
         
         /* Form & Button Styles from base.html */
         .button {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
             border-radius: 6px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             color: white;
             background-color: #002165;
@@ -33,19 +35,18 @@
             background-color: #013a99;
         }
 
-        /* Adjusted modal-content styles for wider popup */
         .modal-content {
-            max-width: 2000px; /* Very large max-width to allow expansion */
-            width: 90vw; /* Set to 90% of the viewport width */
-            height: 90vh;
-            overflow-y: auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            position: relative;
-        }
-
+			/* Removed the fixed height to allow it to shrink to its content */
+			max-width: 2000px;
+			width: 90vw;
+			overflow-y: auto;
+			background-color: #fff;
+			padding: 15px;
+			border-radius: 8px;
+			box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+			position: relative;
+		}
+        
         .modal-close {
             position: absolute;
             top: 10px;
@@ -60,6 +61,27 @@
             width: 100%;
             height: calc(100% - 30px);
             border: none;
+        }
+        
+        /* Additional styles for the form layout */
+        .form-container {
+            padding: 5px;
+        }
+        .main-form-grid {
+            display: grid;
+            grid-template-columns: 50% 50%;
+            gap: 10px;
+        }
+        .form-section {
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .button-group {
+            margin-top: 15px;
+            gap: 5px;
         }
     </style>
     {% block head_styles %}{% endblock %}

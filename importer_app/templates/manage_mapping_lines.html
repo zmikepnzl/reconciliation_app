@@ -23,6 +23,22 @@
     /* Styles for validation feedback */
     .output-warning { color: #fd7e14 !important; border-left: 3px solid #fd7e14; }
     .output-error { color: #dc3545 !important; border-left: 3px solid #dc3545; font-weight: bold; }
+    
+    /* Ignore Rule Section Styling */
+    .ignore-rules-table { margin-top: 15px; }
+    .ignore-rules-table td { position: relative; }
+    .delete-ignore-rule {
+        position: absolute;
+        top: 50%;
+        right: 5px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #dc3545;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 1.2em;
+    }
 </style>
 {% endblock %}
 
@@ -53,7 +69,7 @@
             <p>Upload a sample CSV file to enable the form and populate column dropdowns for accurate mapping.</p>
             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
                 <input type="file" id="csv-file-input" accept=".csv" style="flex-grow: 1;">
-                <button type="button" onclick="processCsvFile()">Process Sample CSV</button>
+                <button type="button" class="button" onclick="processCsvFile()">Process Sample CSV</button>
             </div>
             <div id="sample-data-container" class="{% if not sample_csv_headers %}hidden{% endif %}">
                 <h4>Sample Data Preview:</h4>
@@ -89,7 +105,7 @@
                     <tbody>
                         {% for rule in rules %}
                             {% if not rule.is_hidden %}
-                            <tr data-role="{{ rule.field_role }}" data-name="{{ rule.name }}">
+                            <tr data-role="{{ rule.field_role }}" data-name="{{ rule.name }}" data-original-id="{{ rule.id }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.id" value="{{ rule.id }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.field_role" value="{{ rule.field_role }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.name" value="{{ rule.name }}">
@@ -159,6 +175,34 @@
                 </table>
             </div>
             {% endfor %}
+            <div class="section ignore-rules-section">
+                <h3>Ignore Rules</h3>
+                <p style="margin-bottom: 10px;">Add rules to skip processing specific rows from the CSV file.</p>
+                <div id="ignore-rules-container">
+                    {% for rule in existing_ignore_rules %}
+                    <div class="form-grid" id="ignore-rule-{{ rule.id }}">
+                        <input type="hidden" name="ignore_rules.{{ rule.id }}.id" value="{{ rule.id }}">
+                        <div class="form-group">
+                            <label>Source Column</label>
+                            <select name="ignore_rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown">
+                                <option value="">-- Select Column --</option>
+                                {% for header in sample_csv_headers %}<option value="{{ header }}" {% if rule.source_csv_column == header %}selected{% endif %}>{{ header }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: flex-end; gap: 10px;">
+                            <div style="flex-grow: 1;">
+                                <label>Ignore if value is</label>
+                                <input type="text" name="ignore_rules.{{ rule.id }}.ignore_match" value="{{ rule.ignore_match or '' }}" placeholder="e.g. 'Cancelled' or 'Fixed Line Voice'">
+                            </div>
+                            <button type="button" class="button" onclick="removeIgnoreRule(this)">Remove</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="button-bar" style="justify-content: flex-start;">
+                    <button type="button" class="button" onclick="addIgnoreRule()">Add Ignore Rule</button>
+                </div>
+            </div>
             <div class="button-bar"><button type="submit" class="button">Save All Changes</button></div>
         </div>
     </form>
@@ -174,7 +218,9 @@
         const formContainer = document.getElementById('mapping-form-container');
         const existingIgnoreRules = {{ existing_ignore_rules|tojson }};
         const masterRulesData = {{ full_rule_set|tojson }};
+        const ignoreRulesContainer = document.getElementById('ignore-rules-container');
 
+        // --- Core UI Logic Functions ---
         window.updateRowOnInputChange = function(element) {
             const row = element.closest('tr');
             if (!row) return;
@@ -205,9 +251,9 @@
                 if (headerIndex !== -1) value = sampleFirstRow[headerIndex];
             } else if (sourceType === 'CSV Formula') {
                 let formula = row.querySelector('.formula-builder textarea').value;
+                let context = Object.fromEntries(sampleHeaders.map((h, i) => [h, sampleFirstRow[i]]));
                 value = formula.replace(/\{([^}]+)\}/g, (match, headerName) => {
-                    const headerIndex = sampleHeaders.indexOf(headerName.trim());
-                    return headerIndex !== -1 ? sampleFirstRow[headerIndex] : match;
+                    return context[headerName.trim()] !== undefined ? context[headerName.trim()] : match;
                 });
             } else if (sourceType === 'Text Override') {
                 value = row.querySelector('input[name$=".static_value"]').value;
@@ -217,12 +263,13 @@
 
         async function updateSampleOutput(row) {
             const outputCell = row.querySelector('.sample-output-cell');
-            if (!outputCell) return;
+            if (!outputCell || !sampleHeaders.length) return;
             outputCell.textContent = '...';
             outputCell.classList.remove('output-warning', 'output-error');
             outputCell.title = '';
             const sourceTypeSelect = row.querySelector('.source-type-select');
             const sourceType = sourceTypeSelect ? sourceTypeSelect.value : (row.querySelector('input[name$=".name"][value="billing_month"]') ? 'Text Override' : 'None');
+            
             const rawValue = getRawValue(row);
             if (sourceType === 'Link') {
                 outputCell.textContent = rawValue ? `Find ID for: "${rawValue}"` : '(Select a source column)';
@@ -235,10 +282,12 @@
             const transformationArgs = argsInput ? argsInput.value : '';
             const destinationField = row.dataset.name;
             const fieldRole = row.dataset.role;
+
             if (transformation === 'None' || !rawValue) {
                 outputCell.textContent = rawValue;
                 return;
             }
+            
             try {
                 const response = await fetch("{{ url_for('mapping_manager.transform_preview') }}", {
                     method: 'POST',
@@ -270,29 +319,172 @@
             }
         }
         
-        function initializeRuleValues() {
-            document.querySelectorAll('.rule-table tbody tr').forEach(row => {
-                const role = row.dataset.role;
-                const name = row.dataset.name;
-                if (!role || !name || !masterRulesData[role]) return;
-                
-                const masterRule = masterRulesData[role].find(r => r.name === name);
-                if (!masterRule) return;
-
-                const csvDropdowns = row.querySelectorAll('select[name$=".source_csv_column"]');
-                csvDropdowns.forEach(dropdown => {
-                    if (dropdown && masterRule.source_csv_column) {
-                        dropdown.value = masterRule.source_csv_column;
-                    }
-                });
+        function updateAllCsvDropdowns() {
+            const dropdowns = document.querySelectorAll('.csv-header-dropdown');
+            dropdowns.forEach(dropdown => {
+                const selected = dropdown.value;
+                dropdown.innerHTML = '<option value="">-- Select Column --</option>' + sampleHeaders.map(h => `<option value="${h}">${h}</option>`).join('');
+                if (selected) {
+                    dropdown.value = selected;
+                }
             });
         }
         
-        // --- All other functions (processCsvFile, resetRow, etc.) should be here ---
-        // (Assuming they are already present in your file from previous steps)
-        window.processCsvFile = function() { /* ... full function ... */ };
-        window.resetRow = function(button) { /* ... full function ... */ };
-        // etc.
+        function updateSampleDataPreview(headers, firstRow) {
+            const tableHead = document.querySelector('#sample-data-table thead tr');
+            const tableBody = document.querySelector('#sample-data-table tbody tr');
+            
+            tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+            tableBody.innerHTML = firstRow.map(c => `<td>${c}</td>`).join('');
+            
+            document.getElementById('sample-data-container').classList.remove('hidden');
+        }
+
+        window.processCsvFile = function() {
+            const fileInput = document.getElementById('csv-file-input');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a file to process.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const text = e.target.result;
+                    const lines = text.trim().split('\n');
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const firstRow = lines[1].split(',').map(c => c.trim());
+                    
+                    sampleHeaders = headers;
+                    sampleFirstRow = firstRow;
+
+                    updateSampleDataPreview(sampleHeaders, sampleFirstRow);
+                    updateAllCsvDropdowns();
+                    formContainer.classList.remove('disabled-form');
+
+                    document.querySelectorAll('.rule-table tbody tr').forEach(row => updateSampleOutput(row));
+                    saveSampleDataToDb(MAPPING_ID, headers, firstRow);
+
+                    // Check for ignore rule matches
+                    checkIgnoreRules(firstRow, headers);
+
+                } catch (error) {
+                    alert('Failed to parse CSV. Please check file format.');
+                    console.error('CSV Parsing Error:', error);
+                }
+            };
+            reader.readAsText(file);
+        };
+        
+        async function saveSampleDataToDb(mappingId, headers, firstRow) {
+            try {
+                const response = await fetch("{{ url_for('mapping_manager.save_sample_data') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `mapping_id=${mappingId}&headers_json=${encodeURIComponent(JSON.stringify(headers))}&first_row_json=${encodeURIComponent(JSON.stringify(firstRow))}`
+                });
+                const result = await response.json();
+                if (result.status !== 'success') {
+                    console.error('Failed to save sample data to database:', result.message);
+                }
+            } catch (error) {
+                console.error('Error saving sample data:', error);
+            }
+        }
+        
+        function checkIgnoreRules(firstRow, headers) {
+            const warningBox = document.getElementById('ignore-rule-warning');
+            let isIgnored = false;
+            existingIgnoreRules.forEach(rule => {
+                const colIndex = headers.indexOf(rule.source_csv_column);
+                if (colIndex !== -1 && firstRow[colIndex] === rule.ignore_match) {
+                    isIgnored = true;
+                }
+            });
+            if (isIgnored) {
+                warningBox.classList.remove('hidden');
+            } else {
+                warningBox.classList.add('hidden');
+            }
+        }
+        
+        window.resetRow = function(button) {
+            const row = button.closest('tr');
+            const originalId = row.dataset.originalId;
+            const originalRule = masterRulesData[row.dataset.role].find(r => r.id == originalId);
+            if (!originalRule) return;
+
+            const sourceTypeSelect = row.querySelector('.source-type-select');
+            if (sourceTypeSelect) sourceTypeSelect.value = originalRule.source_type || 'None';
+
+            const csvDropdown = row.querySelector('select[name$=".source_csv_column"]');
+            if (csvDropdown) csvDropdown.value = originalRule.source_csv_column || '';
+
+            const formulaTextarea = row.querySelector('textarea[name$=".formula_template"]');
+            if (formulaTextarea) formulaTextarea.value = originalRule.formula_template || '';
+
+            const staticValueInput = row.querySelector('input[name$=".static_value"]');
+            if (staticValueInput) staticValueInput.value = originalRule.static_value || '';
+
+            const transformSelect = row.querySelector('select[name$=".transformation"]');
+            if (transformSelect) transformSelect.value = originalRule.transformation || 'None';
+
+            const transformArgsInput = row.querySelector('input[name$=".transformation_args"]');
+            if (transformArgsInput) transformArgsInput.value = originalRule.transformation_args || '';
+            
+            updateRowOnInputChange(sourceTypeSelect || transformSelect);
+        }
+
+        // --- Ignore Rules Logic ---
+        let ignoreRuleCounter = existingIgnoreRules.length;
+
+        window.addIgnoreRule = function() {
+            ignoreRuleCounter++;
+            const newRuleId = 'new_' + ignoreRuleCounter;
+            const div = document.createElement('div');
+            div.className = 'form-grid';
+            div.id = `ignore-rule-${newRuleId}`;
+            div.innerHTML = `
+                <input type="hidden" name="ignore_rules.${newRuleId}.id" value="${newRuleId}">
+                <div class="form-group">
+                    <label>Source Column</label>
+                    <select name="ignore_rules.${newRuleId}.source_csv_column" class="csv-header-dropdown">
+                        <option value="">-- Select Column --</option>
+                        ${sampleHeaders.map(h => `<option value="${h}">${h}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end; gap: 10px;">
+                    <div style="flex-grow: 1;">
+                        <label>Ignore if value is</label>
+                        <input type="text" name="ignore_rules.${newRuleId}.ignore_match" placeholder="e.g. 'Cancelled' or 'Fixed Line Voice'">
+                    </div>
+                    <button type="button" class="button" onclick="removeIgnoreRule(this)">Remove</button>
+                </div>
+            `;
+            ignoreRulesContainer.appendChild(div);
+        }
+
+        window.removeIgnoreRule = function(button) {
+            const ruleDiv = button.closest('.form-grid');
+            if (ruleDiv) {
+                ruleDiv.remove();
+            }
+        }
+        
+        window.insertColumnIntoFormula = function(selectElement, textareaId) {
+            const textarea = document.getElementById(textareaId);
+            const selectedOptions = Array.from(selectElement.selectedOptions);
+            const newText = selectedOptions.map(option => `{${option.value}}`).join('');
+            
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            textarea.value = text.substring(0, start) + newText + text.substring(end);
+            selectElement.selectedIndex = -1; // Clear selection
+            textarea.focus();
+            updateSampleOutput(textarea.closest('tr'));
+        }
 
         // --- INITIAL PAGE SETUP ---
         if (sampleHeaders && sampleHeaders.length > 0) {
@@ -303,12 +495,10 @@
         document.querySelectorAll('.rule-table tr').forEach(row => toggleSourceInputs(row));
 
         // CORRECTED LOGIC: Initialize dropdown values first, then trigger the preview update for each row.
-        initializeRuleValues(); 
-
+        // This is done by Jinja now, so we just need to run the preview updates.
         document.querySelectorAll('.rule-table tbody tr').forEach(row => {
             updateSampleOutput(row);
         });
-
     });
 </script>
 {% endblock %}

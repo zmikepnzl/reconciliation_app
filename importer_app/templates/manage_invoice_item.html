@@ -8,38 +8,41 @@
 <style>
     .form-container { padding: 10px; }
     .main-form-grid { display: grid; grid-template-columns: 50% 50%; gap: 20px; }
-    .form-section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
-    h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .form-group { margin-bottom: 15px; }
+    .form-section { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 15px; }
+    h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; }
+    .form-group { margin-bottom: 10px; }
     label { display: block; margin-bottom: 5px; font-weight: bold; }
     input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
     textarea { min-height: 80px; }
-    .button-group { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px;}
+    .button-group { display: flex; justify-content: flex-end; margin-top: 15px; gap: 10px;}
     .read-only-field { background-color: #e9ecef; }
     .checkbox-group { display: flex; align-items: center; gap: 10px; }
     .checkbox-group input { width: auto; }
-    .history-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .history-table th, .history-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
     .history-table th { background-color: #f2f6fc; }
     .link-pill-container { display: flex; flex-wrap: wrap; gap: 5px; }
     .link-pill { background-color: #e9ecef; border-radius: 12px; padding: 4px 10px; font-size: 0.9em; display: inline-flex; align-items: center; border: 1px solid #ced4da; }
     .unlink-button { background: none; border: none; color: #c82333; font-weight: bold; cursor: pointer; margin-left: 6px; padding: 0 4px; font-size: 1.1em; }
-    .search-section { border-top: 1px solid #ddd; margin-top: 20px; padding-top: 20px; }
+    .search-section { border-top: 1px solid #ddd; margin-top: 15px; padding-top: 15px; }
     .search-results { max-height: 300px; overflow-y: auto; border: 1px solid #ccc; margin-top: 10px; border-radius: 4px; }
     .search-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
     .search-item:hover { background-color: #f1f1f1; }
     .link-button { background-color: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    
+    .delete-btn { background-color: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    .delete-btn:hover { background-color: #c82333; }
+    .delete-btn:disabled { background-color: #888; cursor: not-allowed; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="form-container">
     <h1>Manage Item: <span style="color: #002169;">{{ item.billing_reference }}</span></h1>
-
+    
     <form id="save-item-form">
         <input type="hidden" name="item_id" value="{{ item.id }}">
         <div class="main-form-grid">
-            <!-- Left Column -->
             <div>
                 <div class="form-section">
                     <h3>Invoice Item Details</h3>
@@ -86,7 +89,6 @@
                 </div>
             </div>
 
-            <!-- Right Column -->
             <div>
                 <div class="form-section">
                     <h3>Linked Circuits</h3>
@@ -113,7 +115,6 @@
                     </div>
                 </div>
 
-                <!-- MODIFIED: Moved this section to the right column -->
                 <div class="form-section">
                     <h3>Review & Audit</h3>
                     <div class="form-group">
@@ -135,7 +136,12 @@
             </div>
         </div>
 
-        <div class="button-group" style="justify-content: flex-end;">
+        <div class="button-group">
+            {% if linked_circuits %}
+            <button type="button" class="delete-btn" disabled title="Cannot delete when linked to a circuit.">Delete</button>
+            {% else %}
+            <button type="button" class="delete-btn" onclick="confirmDelete('{{ url_for('supplier_setup.delete_invoice_item', item_id=item.id) }}', '{{ item.billing_reference }}')">Delete</button>
+            {% endif %}
             <button type="submit" class="button">Save Changes</button>
         </div>
     </form>
@@ -212,7 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(result => {
                 if (result.status === 'success') {
                     document.getElementById(`pill-circuit-${circuitId}`).remove();
-                    if (linkedCircuitsContainer.children.length === 1 && noLinksMessage) { // Check for p tag
+                    const linkedPills = linkedCircuitsContainer.querySelectorAll('.link-pill');
+                    if (linkedPills.length === 0 && noLinksMessage) {
                         noLinksMessage.style.display = 'block';
                     }
                 } else {
@@ -281,5 +288,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// New function to handle delete button confirmation and submission
+function confirmDelete(url, billingReference) {
+    if (confirm(`Are you sure you want to delete invoice item '${billingReference}'? This action cannot be undone.`)) {
+        fetch(url, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (response.ok) {
+                // If deletion is successful, close the modal and refresh the parent window
+                window.parent.closeModal();
+            } else {
+                alert('An error occurred during deletion.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please check the console for details.');
+        });
+    }
+}
 </script>
 {% endblock %}

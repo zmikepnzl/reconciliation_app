@@ -6,7 +6,13 @@
     </div>
 
     <div class="nav-right">
-        <a href="{{ url_for('customer.index') }}" class="{% if request.blueprint and 'customer' in request.blueprint %}active{% endif %}">Customers</a>
+        <div class="nav-item">
+            <span class="nav-link-heading {% if request.blueprint and 'customer' in request.blueprint %}active{% endif %}">Customers</span>
+            <div class="nav-submenu">
+                <a href="{{ url_for('customer.index') }}">Customer Management</a>
+                <a href="{{ url_for('zeus_imports.index') }}">Zeus Imports</a>
+            </div>
+        </div>
 
         <div class="nav-item">
             <span class="nav-link-heading {% if request.blueprint and ('supplier' in request.blueprint or 'link_items' in request.blueprint) %}active{% endif %}">Suppliers</span>

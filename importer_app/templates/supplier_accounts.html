@@ -28,6 +28,8 @@
         border-radius: 5px;
         background-color: #f8f9fa;
     }
+    .change-positive { color: #28a745; }
+    .change-negative { color: #dc3545; }
 </style>
 {% endblock %}
 
@@ -43,28 +45,54 @@
         <thead>
             <tr>
                 <th>Account Number</th>
-                <th>Total Items</th>
+                <th>Last Invoice Number</th>
+                <th>Last Invoice Date</th>
+                <th>Items (Change)</th>
+                <th>Calculated Total (Change)</th>
                 <th>Unlinked Items</th>
                 <th>Item Audit Status (Recent/Old/None)</th>
-                <th>Last Invoice Date</th>
             </tr>
         </thead>
         <tbody>
             {% for account in accounts %}
             <tr onclick="window.location.href='{{ url_for('supplier_setup.view_account_items', account_id=account.id) }}'">
                 <td>{{ account.account_number }}</td>
-                <td>{{ account.item_count }}</td>
-                <td>{{ account.unlinked_count }}</td>
+                <td>{{ account.last_invoice_number or 'N/A' }}</td>
+                <td>{{ account.last_invoice_month.strftime('%Y-%m-%d') if account.last_invoice_month else 'N/A' }}</td>
+                <td>
+                    {% if account.get('last_items_count') is not none %}
+                        {{ account.last_items_count }}
+                        {% if account.get('items_change') is not none %}
+                            <span class="{{ 'change-positive' if account.items_change > 0 else 'change-negative' }}">(
+                                {% if account.items_change > 0 %}+{% endif %}{{ account.items_change }}
+                            )</span>
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>
+                    {% if account.get('last_monthly_total') is not none %}
+                        {{ '$%.2f'|format(account.last_monthly_total) }}
+                        {% if account.get('total_change') is not none %}
+                            <span class="{{ 'change-positive' if account.total_change > 0 else 'change-negative' }}">(
+                                {% if account.total_change > 0 %}+{% endif %}{{ '%.2f'|format(account.total_change) }}
+                            )</span>
+                        {% endif %}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>{{ account.unlinked_items_count }}</td>
                 <td class="audit-counts">
                     <span class="count-green" title="Audited in last 3 months">{{ account.audited_recent_count }}</span>
                     <span class="count-orange" title="Audited over 3 months ago">{{ account.audited_old_count }}</span>
                     <span class="count-red" title="Never audited">{{ account.unaudited_count }}</span>
                 </td>
-                <td>{{ account.last_invoice_date.strftime('%Y-%m-%d') if account.last_invoice_date else 'N/A' }}</td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="5" style="text-align: center; color: #777;">
+                <td colspan="7" style="text-align: center; color: #777;">
                     No account numbers found for this supplier.
                 </td>
             </tr>

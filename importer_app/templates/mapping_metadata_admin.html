@@ -1,129 +1,443 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapping Metadata Admin</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.12);
+            max-width: 90%;
+            margin: 30px auto;
+        }
+        h1, h2, h3 {
+            color: #012169;
+        }
 
-{% block title %}Mapping Metadata Admin{% endblock %}
+        /* Form & Button Styles */
+        button, input[type="submit"] {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            color: white;
+            background-color: #002165;
+            transition: background-color 0.2s;
+        }
+        button:hover, input[type="submit"]:hover {
+            background-color: #013a99;
+        }
+        .button-bar button {
+            padding: 8px 16px;
+        }
+        .btn-delete-row {
+            background-color: #e74c3c;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-delete-row:hover {
+            background-color: #c0392b;
+        }
 
-{% block head_styles %}
-<style>
-    .page-container { max-width: 95%; margin: 0 auto; }
-    .section { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background-color: #f9f9f9; margin-bottom: 25px; }
-    h1 { font-size: 2em; }
-    h3 { font-size: 1.4em; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9em; table-layout: fixed; }
-    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
-    th { background-color: #f2f6fc; text-align: center; }
-    input, select, textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    input[type="checkbox"] { width: auto; }
-    input[readonly] { background-color: #e9ecef; cursor: not-allowed; }
-    select[multiple] { height: 70px; }
-    .button-bar { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
-    .super-admin-col { display: none; }
-    .source-details p { margin: 4px 0; }
-    .hidden { display: none; }
-</style>
-{% endblock %}
+        /* Flash Messages */
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .flash-messages li {
+            padding: 12px 18px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border: 1px solid transparent;
+        }
+        .flash-messages .success {
+            background-color: #e8f5e9;
+            border-color: #c8e6c9;
+            color: #1b5e20;
+        }
+        .flash-messages .error {
+            background-color: #ffebee;
+            border-color: #ffcdd2;
+            color: #b71c1c;
+        }
+        .flash-messages .info {
+            background-color: #e0f7fa;
+            border-color: #b2ebf2;
+            color: #006064;
+        }
 
-{% block content %}
-<div class="page-container">
-    <a href="{{ url_for('admin.admin_dashboard') }}" class="button" style="background-color: #6c757d; margin-bottom: 20px; display: inline-block;">&larr; Back to Admin</a>
-    <h1>Mapping Metadata Admin</h1>
+        /* Specific Page Styles */
+        .page-container {
+            max-width: 95%;
+            margin: 0 auto;
+        }
+        .section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            margin-bottom: 25px;
+        }
+        h1 { font-size: 2em; }
+        h3 {
+            font-size: 1.4em;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            table-layout: fixed; /* Using fixed for predictable sizing */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
+        th {
+            background-color: #f2f6fc;
+            font-weight: bold;
+        }
 
-    <div class="section" style="display: flex; align-items: center; justify-content: flex-end;">
-        <input type="checkbox" id="chk-super-admin">
-        <label for="chk-super-admin" style="font-weight: bold; color: #dc3545; margin-left: 5px;">Super Admin Override</label>
+        /* Column Widths - Hybrid approach */
+        th:nth-child(1), td:nth-child(1) { width: 15%; } /* Rule Name */
+        th:nth-child(2), td:nth-child(2) { width: 15%; } /* Field Role */
+        th:nth-child(3), td:nth-child(3) { width: 15%; } /* Destination Field */
+        th:nth-child(4), td:nth-child(4) { width: 15%; } /* Source Types */
+        th:nth-child(5), td:nth-child(5) { width: 15%; } /* Source Details - Dynamic width */
+        th:nth-child(6), td:nth-child(6) { width: 15%; } /* Allowed Transformations */
+        th:nth-child(7), td:nth-child(7) { width: 65px; text-align: center; } /* Required - Fixed width */
+        th:nth-child(8), td:nth-child(8) { width: 65px; text-align: center; } /* Hidden - Fixed width */
+        th:nth-child(9), td:nth-child(9) { width: 65px; text-align: center; } /* Is Base - Fixed width */
+        th:nth-child(10), td:nth-child(10) { width: 65px; text-align: center; } /* Actions - Fixed width */
+        
+        .super-admin-col {
+            display: none;
+        }
+        .source-details p {
+            margin: 4px 0;
+        }
+        .hidden {
+            display: none;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            width: auto;
+        }
+        input[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        select[multiple] {
+            height: 70px;
+        }
+        .button-bar {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+    
+    {% include '_navbar.html' %}
+    
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% block content %}
+            <div class="page-container">
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="button" style="background-color: #6c757d; margin-bottom: 20px; display: inline-block;">&larr; Back to Admin</a>
+                <h1>Mapping Metadata Admin</h1>
+
+                <div class="section" style="display: flex; align-items: center; justify-content: flex-end;">
+                    <input type="checkbox" id="chk-super-admin">
+                    <label for="chk-super-admin" style="font-weight: bold; color: #dc3545; margin-left: 5px;">Super Admin Override</label>
+                </div>
+
+                <form id="metadata-form" onsubmit="return false;">
+                    <div class="section">
+                        <h3>Base Mapping Rules</h3>
+                        <table class="rule-table">
+                            <thead>
+                                <tr>
+                                    <th>Rule Name</th>
+                                    <th>Field Role</th>
+                                    <th>Destination Field</th>
+                                    <th>Source Types</th>
+                                    <th>Source Details</th>
+                                    <th>Allowed Transformations</th>
+                                    <th>Required</th>
+                                    <th>Hidden</th>
+                                    <th class="super-admin-col">Is Base</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="base-rules-body"></tbody>
+                        </table>
+                        <div class="button-bar">
+                            <button type="button" id="btn-add-base" disabled>Add New Base Rule</button>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Additional Mapping Rules</h3>
+                        <table class="rule-table">
+                            <thead>
+                                <tr>
+                                    <th>Rule Name</th>
+                                    <th>Field Role</th>
+                                    <th>Destination Field</th>
+                                    <th>Source Types</th>
+                                    <th>Source Details</th>
+                                    <th>Allowed Transformations</th>
+                                    <th>Required</th>
+                                    <th>Hidden</th>
+                                    <th class="super-admin-col">Is Base</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="additional-rules-body"></tbody>
+                        </table>
+                        <div class="button-bar">
+                            <button type="button" id="btn-add-additional">Add New Rule</button>
+                        </div>
+                    </div>
+
+                    <div class="button-bar">
+                        <button type="button" id="btn-save-all">Save All Changes</button>
+                    </div>
+                </form>
+            </div>
+        {% endblock %}
     </div>
 
-    <form id="metadata-form" onsubmit="return false;">
-        <div class="section">
-            <h3>Base Mapping Rules</h3>
-            <table class="rule-table">
-                <thead>
-                    <tr>
-                        <th style="width: 15%;">Rule Name</th>
-                        <th style="width: 12%;">Field Role</th>
-                        <th style="width: 15%;">Destination Field</th>
-                        <th style="width: 12%;">Source Types</th>
-                        <th>Source Details</th>
-                        <th style="width: 15%;">Allowed Transformations</th>
-                        <th style="width: 5%;">Required</th>
-                        <th style="width: 5%;">Hidden</th> <th class="super-admin-col" style="width: 5%;">Is Base</th>
-                        <th style="width: 8%;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="base-rules-body"></tbody>
-            </table>
-            <div class="button-bar">
-                <button type="button" id="btn-add-base" disabled>Add New Base Rule</button>
-            </div>
-        </div>
-
-        <div class="section">
-            <h3>Additional Mapping Rules</h3>
-            <table class="rule-table">
-                <thead>
-                    <tr>
-                        <th style="width: 15%;">Rule Name</th>
-                        <th style="width: 12%;">Field Role</th>
-                        <th style="width: 15%;">Destination Field</th>
-                        <th style="width: 12%;">Source Types</th>
-                        <th>Source Details</th>
-                        <th style="width: 15%;">Allowed Transformations</th>
-                        <th style="width: 5%;">Required</th>
-                        <th style="width: 5%;">Hidden</th> <th class="super-admin-col" style="width: 5%;">Is Base</th>
-                        <th style="width: 8%;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="additional-rules-body"></tbody>
-            </table>
-            <div class="button-bar">
-                <button type="button" id="btn-add-additional">Add New Rule</button>
-            </div>
-        </div>
-
-        <div class="button-bar">
-            <button type="button" id="btn-save-all">Save All Changes</button>
-        </div>
-    </form>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    const DB_SCHEMA = {{ db_schema|tojson }};
-    // ... (rest of the script variables) ...
-    
-    function createRow(rule) {
-        const row = document.createElement('tr');
-        row.dataset.ruleId = rule.id || `new_${Date.now()}`;
+    {% block scripts %}
+    <script>
+        const DB_SCHEMA = {"circuit_invoice_links": ["circuit_id", "invoice_item_id"], "cmdb_circuits": ["access", "activated", "audit_date", "ce_host", "cir", "cir_pri", "circuit_id", "circuit_name", "circuit_service_type", "circuit_termination_type", "circuit_type", "contract_end", "contract_start", "customer_id", "datacom_billing_code", "datacom_last_billing_run_date", "decommissioned", "exchange", "host", "id", "interface", "ip_pe", "ip_router", "last_updated", "linknet", "netflow", "netops_sensor_id", "notes", "pe_host", "pir", "priority", "qosprofile", "region", "review_flag", "review_notes", "review_notes_date", "service_catalogue_item_imported", "service_catalogue_item_linked_id", "service_end_date", "service_type", "site_code", "site_name", "status", "telco", "vendor_account_number", "vendor_billing_end_date", "vlan", "zeus_id"], "customers": ["id", "name"], "import_mapping_lines": ["baserow_field_name", "end_date", "field_role", "formula_template", "id", "ignore_match", "mapping_name_id", "name", "source_csv_column", "source_link_field", "source_link_table", "source_type", "start_date", "static_value", "transformation", "transformation_args"], "import_mappings": ["description", "display_order", "id", "is_active", "mapping_name", "notes", "sample_csv_first_row", "sample_csv_headers", "supplier_id"], "loggingcontrol": ["application", "description", "id", "level", "state"], "mapping_rules_metadata": ["custom_options", "default_transformation", "destination_field", "field_role", "formula_template", "id", "is_base_rule", "is_hidden", "is_required", "link_field_lookup", "link_table_lookup", "rule_name", "source_type_options", "static_value", "transformation_args"], "scheduled_backups": ["backup_name", "backup_type", "day_of_month", "day_of_week", "frequency", "id", "is_active", "last_run_status", "last_run_timestamp", "next_run_timestamp", "notes", "time_of_day"], "service_catalog_items": ["additional_info", "adjustment_percentage", "billable", "billable_quantity", "billing_name", "contract_number", "customer_id", "customer_sell_price", "customer_standard_price", "datacom_cost_price", "host_types", "id", "include_in_billing_run", "master_service_catalogue_item", "netsuite_ru_item_code", "pipeline_quantity", "service_billing_method", "service_description", "service_key", "service_line", "total_bill_price", "unit", "zeus_id"], "servicerates": ["active", "billing_type", "currency", "effective_end_date", "effective_start_date", "id", "notes", "rate_code", "rate_per_unit", "service_description", "supplier_id", "unit_of_measure"], "supplier_account": ["account_number", "id", "supplier_id"], "supplier_invoice_headers": ["account_number_id", "billing_month", "billing_month_logic", "due_date", "id", "invoice_date", "invoice_number", "supplier_id", "tax_amount", "total_amount"], "supplier_invoice_items": ["account_number_id", "audit_date", "billing_reference", "contract_end_date", "contract_start_date", "contract_term_in_months", "id", "notes", "review_flag", "supplier_id"], "supplier_invoice_lines": ["description", "end_date", "id", "invoice_header_id", "item_id", "quantity", "start_date", "total_amount", "unique_reference", "unit_price"], "suppliers": ["account_manager_email", "contact_person", "id", "name", "other_names", "override_name", "supplier_short_name", "type"]};
+        const ROLE_TO_TABLE_MAP = {
+            'account': 'supplier_account',
+            'header': 'supplier_invoice_headers',
+            'item': 'supplier_invoice_items',
+            'line': 'supplier_invoice_lines'
+        };
+        const ALL_SOURCE_TYPES = ['CSV', 'CSV Formula', 'Text Override', 'Link', 'Choice', 'None'];
+        const ALL_FIELD_ROLES = ['header', 'item', 'line', 'account', 'invoice_header_to_item_link'];
+        const ALL_TRANSFORMATIONS = ['To Text', 'To Date', 'To Integer', 'To Decimal', 'To Negative', 'None'];
+        let allRules = [];
+        let isSuperAdmin = false;
         
-        const fieldRolesHtml = `<select name="field_role" onchange="updateDestinationFields(this)">${ALL_FIELD_ROLES.map(role => `<option value="${role}" ${rule.field_role === role ? 'selected' : ''}>${role}</option>`).join('')}</select>`;
-        const sourceTypesHtml = `<select name="source_type_options" multiple onchange="updateRowUI(this.closest('tr'))">${ALL_SOURCE_TYPES.map(type => `<option value="${type}" ${rule.source_type_options?.includes(type) ? 'selected' : ''}>${type}</option>`).join('')}</select>`;
-        const transformationsHtml = `<select name="default_transformation" multiple>${ALL_TRANSFORMATIONS.map(t => `<option value="${t}" ${rule.default_transformation?.includes(t) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+        // --- All JavaScript functions ---
+        
+        function createRow(rule) {
+            const row = document.createElement('tr');
+            row.dataset.ruleId = rule.id || `new_${Date.now()}`;
+            
+            const fieldRolesHtml = `<select name="field_role" onchange="updateDestinationFields(this)">${ALL_FIELD_ROLES.map(role => `<option value="${role}" ${rule.field_role === role ? 'selected' : ''}>${role}</option>`).join('')}</select>`;
+            const sourceTypesHtml = `<select name="source_type_options" multiple onchange="updateRowUI(this.closest('tr'))">${ALL_SOURCE_TYPES.map(type => `<option value="${type}" ${rule.source_type_options?.includes(type) ? 'selected' : ''}>${type}</option>`).join('')}</select>`;
+            const transformationsHtml = `<select name="default_transformation" multiple>${ALL_TRANSFORMATIONS.map(t => `<option value="${t}" ${rule.default_transformation?.includes(t) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
 
-        // ADDED is_hidden checkbox to this template literal
-        row.innerHTML = `
-            <td><input type="text" name="rule_name" value="${rule.rule_name || ''}"></td>
-            <td>${fieldRolesHtml}</td>
-            <td><select name="destination_field" class="destination-field-select"></select></td>
-            <td>${sourceTypesHtml}</td>
-            <td class="source-details">
-                <div class="link-details hidden">
-                    <p>Table: <select name="link_table_lookup" class="link-table-select" onchange="updateFieldDropdown(this)"></select></p>
-                    <p>Field: <select name="link_field_lookup" class="link-field-select"></select></p>
-                </div>
-                <div class="choice-details hidden">
-                    <p>Choices (comma-separated):</p>
-                    <textarea name="custom_options" placeholder="e.g., Choice A,Choice B">${rule.custom_options || ''}</textarea>
-                </div>
-            </td>
-            <td>${transformationsHtml}</td>
-            <td style="text-align: center;"><input type="checkbox" name="is_required" ${rule.is_required ? 'checked' : ''}></td>
-            <td style="text-align: center;"><input type="checkbox" name="is_hidden" ${rule.is_hidden ? 'checked' : ''}></td>
-            <td class="super-admin-col" style="text-align: center;"><input type="checkbox" name="is_base_rule" ${rule.is_base_rule ? 'checked' : ''}></td>
-            <td><button type="button" class="btn-delete-row" onclick="deleteRow(this)">Delete</button></td>
-        `;
-        return row;
-    }
-    
-    // ... (rest of the JavaScript functions) ...
-</script>
-{% endblock %}
+            row.innerHTML = `
+                <td><input type="text" name="rule_name" value="${rule.rule_name || ''}"></td>
+                <td>${fieldRolesHtml}</td>
+                <td><select name="destination_field" class="destination-field-select"></select></td>
+                <td>${sourceTypesHtml}</td>
+                <td class="source-details">
+                    <div class="link-details hidden">
+                        <p>Table: <select name="link_table_lookup" class="link-table-select" onchange="updateFieldDropdown(this)"></select></p>
+                        <p>Field: <select name="link_field_lookup" class="link-field-select"></select></p>
+                    </div>
+                    <div class="choice-details hidden">
+                        <p>Choices (comma-separated):</p>
+                        <textarea name="custom_options" placeholder="e.g., Choice A,Choice B">${rule.custom_options || ''}</textarea>
+                    </div>
+                </td>
+                <td>${transformationsHtml}</td>
+                <td style="text-align: center;"><input type="checkbox" name="is_required" ${rule.is_required ? 'checked' : ''}></td>
+                <td style="text-align: center;"><input type="checkbox" name="is_hidden" ${rule.is_hidden ? 'checked' : ''}></td>
+                <td class="super-admin-col" style="text-align: center;"><input type="checkbox" name="is_base_rule" ${rule.is_base_rule ? 'checked' : ''}></td>
+                <td><button type="button" class="btn-delete-row" onclick="deleteRow(this)">Delete</button></td>
+            `;
+            return row;
+        }
+        
+        async function saveAllChanges() {
+            const saveButton = document.getElementById('btn-save-all');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            const rows = document.querySelectorAll('.rule-table tbody tr');
+            for (const row of rows) {
+                const ruleId = row.dataset.ruleId;
+                const isNew = ruleId.startsWith('new_');
+                const data = {};
+                row.querySelectorAll('input, select, textarea').forEach(input => {
+                    if (!input.name) return;
+                    if (input.type === 'checkbox') data[input.name] = input.checked;
+                    else if (input.multiple) data[input.name] = Array.from(input.selectedOptions).map(opt => opt.value).join(',');
+                    else data[input.name] = input.value;
+                });
+                
+                const url = isNew ? "/admin/mapping_rules/api/metadata" : `/admin/mapping_rules/api/metadata/0`.slice(0,-1) + ruleId;
+                const method = isNew ? 'POST' : 'PUT';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to save rule "${data.rule_name}". Server responded with: ${errorText}`);
+                    }
+                } catch (error) {
+                    alert(error.message);
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Save All Changes';
+                    return; // Stop on first error
+                }
+            }
+            
+            alert('All changes saved successfully!');
+            window.location.reload(); // Reload the page to confirm changes
+        }
+
+        function fetchRules() {
+            try {
+                fetch("/admin/mapping_rules/api/metadata")
+                    .then(res => { if (!res.ok) throw new Error('Network response was not ok'); return res.json(); })
+                    .then(data => { allRules = data; renderRules(); })
+                    .catch(error => { console.error("Fetch error:", error); alert("Could not load rules."); });
+            } catch (error) { console.error("Error in fetchRules:", error); }
+        }
+        function renderRules() {
+            const baseBody = document.getElementById('base-rules-body');
+            const additionalBody = document.getElementById('additional-rules-body');
+            baseBody.innerHTML = ''; additionalBody.innerHTML = '';
+            allRules.sort((a, b) => (a.rule_name || '').localeCompare(b.rule_name || ''));
+            allRules.forEach(rule => {
+                const row = createRow(rule);
+                (rule.is_base_rule ? baseBody : additionalBody).appendChild(row);
+                updateDestinationFields(row.querySelector('[name="field_role"]'), rule.destination_field);
+                populateTableDropdown(row.querySelector('.link-table-select'), rule.link_table_lookup);
+                const fieldSelect = row.querySelector('.link-field-select');
+                if (fieldSelect && rule.link_field_lookup) { fieldSelect.value = rule.link_field_lookup; }
+                updateRowUI(row);
+            });
+            toggleBaseRuleEditability();
+        }
+        function updateDestinationFields(roleSelect, selectedValue) {
+            const row = roleSelect.closest('tr');
+            const destSelect = row.querySelector('.destination-field-select');
+            const selectedRole = roleSelect.value;
+            const targetTable = ROLE_TO_TABLE_MAP[selectedRole];
+            destSelect.innerHTML = '<option value="">-- Select Field --</option>';
+            if (targetTable && DB_SCHEMA[targetTable]) {
+                DB_SCHEMA[targetTable].forEach(field => destSelect.add(new Option(field, field)));
+            }
+            destSelect.value = selectedValue;
+        }
+        function updateRowUI(row) {
+            const sourceTypeSelect = row.querySelector('[name="source_type_options"]');
+            const selectedTypes = Array.from(sourceTypeSelect.selectedOptions).map(opt => opt.value);
+            row.querySelector('.link-details').classList.toggle('hidden', !selectedTypes.includes('Link'));
+            row.querySelector('.choice-details').classList.toggle('hidden', !selectedTypes.includes('Choice'));
+            const transformationSelect = row.querySelector('[name="default_transformation"]');
+            if (transformationSelect) {
+                const isLinkOrChoice = selectedTypes.includes('Link') || selectedTypes.includes('Choice');
+                transformationSelect.parentElement.style.visibility = isLinkOrChoice ? 'hidden' : 'visible';
+            }
+        }
+        function populateTableDropdown(selectElement, selectedValue) {
+            if (!selectElement) return;
+            selectElement.innerHTML = '<option value="">-- Select Table --</option>';
+            Object.keys(DB_SCHEMA).sort().forEach(table => selectElement.add(new Option(table, table)));
+            selectElement.value = selectedValue;
+            updateFieldDropdown(selectElement);
+        }
+        function updateFieldDropdown(tableSelect) {
+            const row = tableSelect.closest('tr');
+            const fieldSelect = row.querySelector('.link-field-select');
+            const selectedTable = tableSelect.value;
+            const savedValue = fieldSelect.value;
+            fieldSelect.innerHTML = '<option value="">-- Select Field --</option>';
+            if (selectedTable && DB_SCHEMA[selectedTable]) {
+                DB_SCHEMA[selectedTable].forEach(field => fieldSelect.add(new Option(field, field)));
+                fieldSelect.value = savedValue;
+            }
+        }
+        function addRow(isBase) {
+            const newRule = { is_base_rule: isBase };
+            const tableBody = isBase ? document.getElementById('base-rules-body') : document.getElementById('additional-rules-body');
+            const newRow = createRow(newRule);
+            tableBody.appendChild(newRow);
+            updateDestinationFields(newRow.querySelector('[name="field_role"]'), null);
+            populateTableDropdown(newRow.querySelector('.link-table-select'), null);
+            updateRowUI(newRow);
+            toggleBaseRuleEditability();
+        }
+        function deleteRow(button) {
+            if (confirm('Are you sure?')) { button.closest('tr').remove(); }
+        }
+        function toggleBaseRuleEditability() {
+            isSuperAdmin = document.getElementById('chk-super-admin').checked;
+            document.getElementById('btn-add-base').disabled = !isSuperAdmin;
+            document.querySelectorAll('.super-admin-col').forEach(col => col.style.display = isSuperAdmin ? 'table-cell' : 'none');
+            document.querySelectorAll('.rule-table tbody tr').forEach(row => {
+                const isBaseRow = row.parentElement.id === 'base-rules-body';
+                const canEdit = !isBaseRow || isSuperAdmin;
+                row.querySelectorAll('input, select, textarea, button').forEach(el => {
+                    if(el.name === 'is_base_rule') el.disabled = !isSuperAdmin;
+                    else el.disabled = !canEdit;
+                });
+                if (canEdit) {
+                    updateRowUI(row);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchRules();
+            document.getElementById('chk-super-admin').addEventListener('change', toggleBaseRuleEditability);
+            document.getElementById('btn-add-base').addEventListener('click', () => addRow(true));
+            document.getElementById('btn-add-additional').addEventListener('click', () => addRow(false));
+            document.getElementById('btn-save-all').addEventListener('click', saveAllChanges);
+        });
+    </script>
+    {% endblock %}
+</body>
+</html>
