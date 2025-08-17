@@ -10,7 +10,7 @@
     table { width: 100%; border-collapse: collapse; font-size: 0.9em; table-layout: fixed; }
     th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; vertical-align: middle; word-wrap: break-word; }
     th { background-color: #f2f6fc; }
-    .rule-table input, .rule-table select, .details-section input, .details-section textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .rule-table input, .rule-table select, .details-section input, .details-section textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border; }
     .button-bar { margin: 20px 0; display: flex; justify-content: flex-end; gap: 10px; }
     .required-field::after { content: ' *'; color: red; }
     .hidden { display: none; }
@@ -39,6 +39,68 @@
         cursor: pointer;
         font-size: 1.2em;
     }
+
+    /* Styles for core rules */
+    .core-rule-row {
+        background-color: #f0f0f0; /* Light grey background */
+        opacity: 0.8; /* Slightly faded */
+    }
+    .core-rule-row input,
+    .core-rule-row select,
+    .core-rule-row textarea {
+        cursor: not-allowed;
+        background-color: #e9ecef; /* Slightly darker input background */
+    }
+    .core-rule-row .btn-delete-row {
+        display: none; /* Hide delete button for core rules */
+    }
+    /* Disable other buttons in core rule rows, but not the reset button */
+    .core-rule-row button:not(.reset-button) {
+        cursor: not-allowed;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .core-rule-row .reset-button {
+        background-color: #007bff; /* Keep reset button visible and styled */
+        color: white;
+        pointer-events: auto; /* Ensure it's clickable */
+        opacity: 1; /* Ensure it's not faded */
+    }
+
+    /* Tooltip styles for rule name notes */
+    .rule-name-with-note {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    .tooltip-icon {
+        margin-left: 5px;
+        cursor: help;
+        color: #007bff;
+        font-weight: bold;
+        font-size: 0.9em;
+    }
+    .tooltip-text {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: left;
+        border-radius: 6px;
+        padding: 5px 8px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%; /* Position above the icon */
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.8em;
+    }
+    .rule-name-with-note:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
 </style>
 {% endblock %}
 
@@ -47,7 +109,7 @@
     <a href="{{ url_for('supplier_setup.manage_supplier', supplier_id=mapping_rule.supplier_id) }}" class="button" style="background-color: #6c757d;">&larr; Back to Supplier</a>
     <h1>Manage Mapping Rules</h1>
 
-    <form action="{{ url_for('mapping_manager.save_mapping_lines_set') }}" method="POST">
+    <form id="mapping-lines-form" action="{{ url_for('mapping_manager.save_mapping_lines_set') }}" method="POST">
         <input type="hidden" name="mapping_id" value="{{ mapping_rule.id }}">
 
         <div class="section details-section">
@@ -86,6 +148,7 @@
         <div id="mapping-form-container" class="{% if not sample_csv_headers %}disabled-form{% endif %}">
             <div class="button-bar">
                 <button type="submit" class="button">Save All Changes</button>
+                <button type="button" class="button btn-danger" onclick="resetAllMappingLines()">Reset All Lines</button>
             </div>
 
             {% for role_key, rules in full_rule_set.items() %}
@@ -104,17 +167,30 @@
                     </thead>
                     <tbody>
                         {% for rule in rules %}
-                            {% if not rule.is_hidden %}
-                            <tr data-role="{{ rule.field_role }}" data-name="{{ rule.name }}" data-original-id="{{ rule.id }}">
+                            {# Add a class to the row if it's a base rule and pass is_base_rule data #}
+                            <tr data-role="{{ rule.field_role }}" data-name="{{ rule.name }}" data-original-id="{{ rule.id }}"
+                                data-is-base-rule="{{ 'true' if rule.is_base_rule else 'false' }}"
+                                class="{{ 'core-rule-row' if rule.is_base_rule }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.id" value="{{ rule.id }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.field_role" value="{{ rule.field_role }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.name" value="{{ rule.name }}">
                                 <input type="hidden" name="rules.{{ rule.id }}.display_name" value="{{ rule.display_name }}">
-                                <td class="{{ 'required-field' if rule.required }} rule-display-name">{{ rule.display_name }}</td>
+                                <td class="{{ 'required-field' if rule.required }} rule-display-name">
+                                    <div class="rule-name-with-note">
+                                        <span>{{ rule.display_name }}</span>
+                                        {% if rule.notes %}
+                                            <div class="tooltip">
+                                                <span class="tooltip-icon">?</span>
+                                                <span class="tooltip-text">{{ rule.notes }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
                                 {% if rule.name == 'billing_month' %}
                                 <td colspan="2">
                                     <input type="hidden" name="rules.{{ rule.id }}.source_type" value="Text Override">
-                                    <select name="rules.{{ rule.id }}.static_value" onchange="updateRowOnInputChange(this)">
+                                    <select name="rules.{{ rule.id }}.static_value" onchange="updateRowOnInputChange(this)"
+                                            {% if rule.is_base_rule %}disabled{% endif %}>
                                         <option value="advance" {% if rule.static_value == 'advance' %}selected{% endif %}>Billed in Advance</option>
                                         <option value="arrears" {% if rule.static_value == 'arrears' %}selected{% endif %}>Billed in Arrears</option>
                                         <option value="current" {% if rule.static_value == 'current' %}selected{% endif %}>Current</option>
@@ -122,7 +198,8 @@
                                 </td>
                                 {% else %}
                                 <td>
-                                    <select name="rules.{{ rule.id }}.source_type" class="source-type-select" onchange="updateRowOnInputChange(this)">
+                                    <select name="rules.{{ rule.id }}.source_type" class="source-type-select" onchange="updateRowOnInputChange(this)"
+                                            {% if rule.is_base_rule %}disabled{% endif %}>
                                         {% for type_option in (rule.source_type_options or '').split(',') %}
                                             <option value="{{ type_option }}" {% if rule.source_type == type_option %}selected{% endif %}>{{ type_option }}</option>
                                         {% endfor %}
@@ -130,26 +207,31 @@
                                 </td>
                                 <td>
                                     <div class="source-input csv-input {% if rule.source_type != 'CSV' %}hidden{% endif %}">
-                                        <select name="rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown" onchange="updateRowOnInputChange(this)">
+                                        <select name="rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown" onchange="updateRowOnInputChange(this)"
+                                                {% if rule.is_base_rule %}disabled{% endif %}>
                                             <option value="">-- Select Column --</option>
                                             {% for header in sample_csv_headers %}<option value="{{ header }}" {% if rule.source_csv_column == header %}selected{% endif %}>{{ header }}</option>{% endfor %}
                                         </select>
                                     </div>
                                     <div class="source-input csvformula-input {% if rule.source_type != 'CSV Formula' %}hidden{% endif %}">
                                         <div class="formula-builder">
-                                            <select multiple class="csv-header-dropdown" onchange="insertColumnIntoFormula(this, 'formula-textarea-{{ rule.id }}')">
+                                            <select multiple class="csv-header-dropdown" onchange="insertColumnIntoFormula(this, 'formula-textarea-{{ rule.id }}')"
+                                                    {% if rule.is_base_rule %}disabled{% endif %}>
                                                 <option value="">-- Insert Column(s) --</option>
                                                 {% for header in sample_csv_headers %}<option value="{{ header }}">{{ header }}</option>{% endfor %}
                                             </select>
-                                            <textarea id="formula-textarea-{{ rule.id }}" name="rules.{{ rule.id }}.formula_template" placeholder="Build formula using {Column Name}" onchange="updateRowOnInputChange(this)" onkeyup="updateRowOnInputChange(this)">{{ rule.formula_template or '' }}</textarea>
+                                            <textarea id="formula-textarea-{{ rule.id }}" name="rules.{{ rule.id }}.formula_template" placeholder="Build formula using {Column Name}" onchange="updateRowOnInputChange(this)" onkeyup="updateRowOnInputChange(this)"
+                                                      {% if rule.is_base_rule %}disabled{% endif %}>{{ rule.formula_template or '' }}</textarea>
                                         </div>
                                     </div>
                                     <div class="source-input textoverride-input {% if rule.source_type != 'Text Override' %}hidden{% endif %}">
-                                        <input type="text" name="rules.{{ rule.id }}.static_value" value="{{ rule.static_value or '' }}" onkeyup="updateRowOnInputChange(this)">
+                                        <input type="text" name="rules.{{ rule.id }}.static_value" value="{{ rule.static_value or '' }}" onkeyup="updateRowOnInputChange(this)"
+                                               {% if rule.is_base_rule %}disabled{% endif %}>
                                     </div>
                                     <div class="source-input link-input {% if rule.source_type != 'Link' %}hidden{% endif %}">
                                         <p><strong>Source Column for Lookup:</strong></p>
-                                        <select name="rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown" onchange="updateRowOnInputChange(this)">
+                                        <select name="rules.{{ rule.id }}.source_csv_column" class="csv-header-dropdown" onchange="updateRowOnInputChange(this)"
+                                                {% if rule.is_base_rule %}disabled{% endif %}>
                                             <option value="">-- Select Column --</option>
                                             {% for header in sample_csv_headers %}<option value="{{ header }}" {% if rule.source_csv_column == header %}selected{% endif %}>{{ header }}</option>{% endfor %}
                                         </select>
@@ -159,17 +241,23 @@
                                 </td>
                                 {% endif %}
                                 <td class="transformation-cell">
-                                    <select name="rules.{{ rule.id }}.transformation" onchange="updateRowOnInputChange(this)">
+                                    <select name="rules.{{ rule.id }}.transformation" onchange="updateRowOnInputChange(this)"
+                                            {% if rule.is_base_rule %}disabled{% endif %}>
                                         {% for t_option in rule.allowed_transformations %}
                                             <option value="{{ t_option }}" {% if rule.transformation == t_option %}selected{% endif %}>{{ t_option }}</option>
                                         {% endfor %}
                                     </select>
-                                    <input type="text" name="rules.{{ rule.id }}.transformation_args" value="{{ rule.transformation_args or '' }}" placeholder="Argument (e.g., date format)" style="margin-top: 5px;" onkeyup="updateRowOnInputChange(this)">
+                                    <input type="text" name="rules.{{ rule.id }}.transformation_args" value="{{ rule.transformation_args or '' }}" placeholder="Argument (e.g., date format)" style="margin-top: 5px;" onkeyup="updateRowOnInputChange(this)"
+                                           {% if rule.is_base_rule %}disabled{% endif %}>
                                 </td>
                                 <td class="sample-output-cell" id="preview-{{ rule.id }}">(Transformed Value)</td>
-                                <td><button type="button" onclick="resetRow(this)">Reset</button></td>
+                                <td>
+                                    <button type="button" onclick="resetRow(this)" class="reset-button"
+                                            {% if rule.is_base_rule %}disabled{% endif %}>Reset</button>
+                                </td>
                             </tr>
-                            {% endif %}
+                            {# The 'is_hidden' check is removed from the outer loop, as the backend should filter this.
+                                If `rule.is_hidden` is true, the row will still be rendered but its inputs will be disabled. #}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -219,6 +307,7 @@
         const existingIgnoreRules = {{ existing_ignore_rules|tojson }};
         const masterRulesData = {{ full_rule_set|tojson }};
         const ignoreRulesContainer = document.getElementById('ignore-rules-container');
+        const mappingLinesForm = document.getElementById('mapping-lines-form');
 
         // --- Core UI Logic Functions ---
         window.updateRowOnInputChange = function(element) {
@@ -264,7 +353,7 @@
         async function updateSampleOutput(row) {
             const outputCell = row.querySelector('.sample-output-cell');
             if (!outputCell || !sampleHeaders.length) return;
-            outputCell.textContent = '...';
+            outputCell.textContent = '...'; // Show loading indicator
             outputCell.classList.remove('output-warning', 'output-error');
             outputCell.title = '';
             const sourceTypeSelect = row.querySelector('.source-type-select');
@@ -278,13 +367,13 @@
             }
             const transformSelect = row.querySelector('select[name$=".transformation"]');
             const transformation = transformSelect ? transformSelect.value : 'None';
-            const argsInput = row.querySelector('input[name$=".transformation_args"]');
+            const argsInput = row.querySelector('input[name$=".transformation_args']');
             const transformationArgs = argsInput ? argsInput.value : '';
             const destinationField = row.dataset.name;
             const fieldRole = row.dataset.role;
 
             if (transformation === 'None' || !rawValue) {
-                outputCell.textContent = rawValue;
+                outputCell.textContent = rawValue; // Display raw value if no transformation or no raw value
                 return;
             }
             
@@ -302,6 +391,7 @@
                 });
                 const result = await response.json();
                 if (response.ok) {
+                    // Display the transformed_value from the API response
                     outputCell.textContent = result.transformed_value;
                     if (result.validation_status && result.validation_status !== 'ok') {
                         outputCell.classList.add('output-' + result.validation_status);
@@ -411,8 +501,20 @@
         window.resetRow = function(button) {
             const row = button.closest('tr');
             const originalId = row.dataset.originalId;
-            const originalRule = masterRulesData[row.dataset.role].find(r => r.id == originalId);
-            if (!originalRule) return;
+            // Find the original rule from masterRulesData using role and originalId
+            let originalRule = null;
+            for (const roleKey in masterRulesData) {
+                const found = masterRulesData[roleKey].find(r => r.id == originalId);
+                if (found) {
+                    originalRule = found;
+                    break;
+                }
+            }
+            
+            if (!originalRule) {
+                console.warn("Original rule not found for resetRow:", originalId);
+                return;
+            }
 
             const sourceTypeSelect = row.querySelector('.source-type-select');
             if (sourceTypeSelect) sourceTypeSelect.value = originalRule.source_type || 'None';
@@ -423,7 +525,7 @@
             const formulaTextarea = row.querySelector('textarea[name$=".formula_template"]');
             if (formulaTextarea) formulaTextarea.value = originalRule.formula_template || '';
 
-            const staticValueInput = row.querySelector('input[name$=".static_value"]');
+            const staticValueInput = row.querySelector('input[name$=".static_value']');
             if (staticValueInput) staticValueInput.value = originalRule.static_value || '';
 
             const transformSelect = row.querySelector('select[name$=".transformation"]');
@@ -432,8 +534,52 @@
             const transformArgsInput = row.querySelector('input[name$=".transformation_args"]');
             if (transformArgsInput) transformArgsInput.value = originalRule.transformation_args || '';
             
-            updateRowOnInputChange(sourceTypeSelect || transformSelect);
+            // For billing_month, directly update the select
+            const billingMonthSelect = row.querySelector('select[name$=".static_value"]');
+            if (billingMonthSelect && originalRule.name === 'billing_month') {
+                billingMonthSelect.value = originalRule.static_value || 'current';
+            }
+
+            updateRowOnInputChange(sourceTypeSelect || transformSelect || billingMonthSelect);
         }
+
+        // --- New: Reset All Lines Functionality ---
+        window.resetAllMappingLines = async function() {
+            const confirmation = await showCustomConfirm(
+                'Are you sure you want to reset ALL mapping lines? This will delete all existing lines ' +
+                'and replace them with the current state of the form. This action cannot be undone.'
+            );
+            if (!confirmation) {
+                return;
+            }
+
+            // Collect all form data
+            const formData = new FormData(mappingLinesForm);
+            const data = new URLSearchParams(formData).toString(); // Convert to x-www-form-urlencoded
+
+            try {
+                const response = await fetch("{{ url_for('mapping_manager.reset_all_mapping_lines') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: data
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert(result.message);
+                    // Reload the page to reflect the new state from the database
+                    window.location.reload(); 
+                } else {
+                    alert(`Error resetting lines: ${result.message || 'Unknown error'}`);
+                    console.error('Error resetting lines:', result);
+                }
+            } catch (error) {
+                alert(`Failed to reset lines: ${error.message}`);
+                console.error('Fetch error during reset:', error);
+            }
+        };
 
         // --- Ignore Rules Logic ---
         let ignoreRuleCounter = existingIgnoreRules.length;
@@ -486,6 +632,64 @@
             updateSampleOutput(textarea.closest('tr'));
         }
 
+        // --- Custom Alert/Confirm Modals (replacing window.alert/confirm) ---
+        let customAlertDialog;
+        let customConfirmDialog;
+        let customConfirmResolve;
+
+        function initCustomDialogs() {
+            // Alert Dialog
+            customAlertDialog = document.createElement('div');
+            customAlertDialog.id = 'custom-alert-dialog';
+            customAlertDialog.className = 'modal';
+            customAlertDialog.innerHTML = `
+                <div class="modal-content">
+                    <span class="close-button" onclick="customAlertDialog.style.display='none';">&times;</span>
+                    <h2 style="font-size: 1.5em; margin-bottom: 15px;">Message</h2>
+                    <p id="custom-alert-message" style="margin-bottom: 25px;"></p>
+                    <div class="modal-button-bar" style="justify-content: center;">
+                        <button class="button" onclick="customAlertDialog.style.display='none';">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(customAlertDialog);
+
+            // Confirm Dialog
+            customConfirmDialog = document.createElement('div');
+            customConfirmDialog.id = 'custom-confirm-dialog';
+            customConfirmDialog.className = 'modal';
+            customConfirmDialog.innerHTML = `
+                <div class="modal-content">
+                    <span class="close-button" onclick="customConfirmDialog.style.display='none'; customConfirmResolve(false);">&times;</span>
+                    <h2 style="font-size: 1.5em; margin-bottom: 15px;">Confirmation</h2>
+                    <p id="custom-confirm-message" style="margin-bottom: 25px;"></p>
+                    <div class="modal-button-bar" style="justify-content: center;">
+                        <button class="button" onclick="customConfirmDialog.style.display='none'; customConfirmResolve(true);">Yes</button>
+                        <button class="button btn-secondary" onclick="customConfirmDialog.style.display='none'; customConfirmResolve(false);">No</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(customConfirmDialog);
+
+            // Override native alerts/confirms (optional, but good for consistency)
+            window.alert = function(message) {
+                document.getElementById('custom-alert-message').textContent = message;
+                customAlertDialog.style.display = 'block';
+            };
+            window.confirm = function(message) {
+                return new Promise(resolve => {
+                    document.getElementById('custom-confirm-message').textContent = message;
+                    customConfirmResolve = resolve;
+                    customConfirmDialog.style.display = 'block';
+                });
+            };
+        }
+
+        async function showCustomConfirm(message) {
+            return await window.confirm(message);
+        }
+        // --- End Custom Alert/Confirm Modals ---
+
         // --- INITIAL PAGE SETUP ---
         if (sampleHeaders && sampleHeaders.length > 0) {
             formContainer.classList.remove('disabled-form');
@@ -499,6 +703,9 @@
         document.querySelectorAll('.rule-table tbody tr').forEach(row => {
             updateSampleOutput(row);
         });
+
+        // Initialize custom dialogs
+        initCustomDialogs();
     });
 </script>
 {% endblock %}

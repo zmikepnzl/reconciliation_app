@@ -103,7 +103,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 0.9em;
-            table-layout: fixed; /* Using fixed for predictable sizing */
+            table-layout: fixed;
         }
         th, td {
             border: 1px solid #ddd;
@@ -118,17 +118,17 @@
         }
 
         /* Column Widths - Hybrid approach */
-        th:nth-child(1), td:nth-child(1) { width: 15%; } /* Rule Name */
-        th:nth-child(2), td:nth-child(2) { width: 15%; } /* Field Role */
-        th:nth-child(3), td:nth-child(3) { width: 15%; } /* Destination Field */
-        th:nth-child(4), td:nth-child(4) { width: 15%; } /* Source Types */
-        th:nth-child(5), td:nth-child(5) { width: 15%; } /* Source Details - Dynamic width */
+        th:nth-child(1), td:nth-child(1) { width: 12%; } /* Rule Name */
+        th:nth-child(2), td:nth-child(2) { width: 10%; } /* Field Role */
+        th:nth-child(3), td:nth-child(3) { width: 12%; } /* Destination Field */
+        th:nth-child(4), td:nth-child(4) { width: 12%; } /* Source Types */
+        th:nth-child(5), td:nth-child(5) { width: 25%; } /* Source Details - Dynamic width */
         th:nth-child(6), td:nth-child(6) { width: 15%; } /* Allowed Transformations */
-        th:nth-child(7), td:nth-child(7) { width: 65px; text-align: center; } /* Required - Fixed width */
-        th:nth-child(8), td:nth-child(8) { width: 65px; text-align: center; } /* Hidden - Fixed width */
-        th:nth-child(9), td:nth-child(9) { width: 65px; text-align: center; } /* Is Base - Fixed width */
-        th:nth-child(10), td:nth-child(10) { width: 65px; text-align: center; } /* Actions - Fixed width */
-        
+        th:nth-child(7), td:nth-child(7) { width: 50px; text-align: center; } /* Required - Fixed width */
+        th:nth-child(8), td:nth-child(8) { width: 50px; text-align: center; } /* Hidden - Fixed width */
+        th:nth-child(9), td:nth-child(9) { width: 50px; text-align: center; } /* Is Base - Fixed width */
+        th:nth-child(10), td:nth-child(10) { width: 80px; text-align: center; } /* Actions - Fixed width */
+
         .super-admin-col {
             display: none;
         }
@@ -137,6 +137,113 @@
         }
         .hidden {
             display: none;
+        }
+        .formula-builder {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        /* Tooltip styles for rule name */
+        .rule-name-with-note {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .tooltip-icon {
+            margin-left: 5px;
+            cursor: help;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 5px 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .rule-name-with-note:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .required-asterisk {
+            color: red;
+            margin-left: 5px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal-rules-list {
+            list-style-type: none;
+            padding: 0;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .modal-rules-list li {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+        .modal-rules-list li:last-child {
+            border-bottom: none;
+        }
+        .modal-rule-name {
+            font-weight: bold;
+            color: #012169;
+        }
+        .modal-rule-note textarea {
+            width: 100%;
+            height: 60px;
+        }
+        .modal-button-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
         }
 
         input, select, textarea {
@@ -165,9 +272,9 @@
     </style>
 </head>
 <body>
-    
+
     {% include '_navbar.html' %}
-    
+
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -180,12 +287,15 @@
         {% endwith %}
         {% block content %}
             <div class="page-container">
-                <a href="{{ url_for('admin.admin_dashboard') }}" class="button" style="background-color: #6c757d; margin-bottom: 20px; display: inline-block;">&larr; Back to Admin</a>
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="button" style="background-color: #6c757d;">&larr; Back to Admin</a>
                 <h1>Mapping Metadata Admin</h1>
 
-                <div class="section" style="display: flex; align-items: center; justify-content: flex-end;">
-                    <input type="checkbox" id="chk-super-admin">
-                    <label for="chk-super-admin" style="font-weight: bold; color: #dc3545; margin-left: 5px;">Super Admin Override</label>
+                <div class="section" style="display: flex; align-items: center; justify-content: space-between;">
+                    <button type="button" class="button" onclick="openNotesModal()">Edit Rule Notes</button>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="chk-super-admin">
+                        <label for="chk-super-admin" style="font-weight: bold; color: #dc3545;">Super Admin Override</label>
+                    </div>
                 </div>
 
                 <form id="metadata-form" onsubmit="return false;">
@@ -242,10 +352,21 @@
                     </div>
                 </form>
             </div>
+
+            <div id="notes-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close-button" onclick="closeNotesModal()">&times;</span>
+                    <h2>Edit Rule Notes</h2>
+                    <ul id="modal-rules-list" class="modal-rules-list">
+                        </ul>
+                    <div class="modal-button-bar">
+                        <button type="button" class="button" onclick="saveNotes()">Save Notes</button>
+                    </div>
+                </div>
+            </div>
         {% endblock %}
     </div>
 
-    {% block scripts %}
     <script>
         const DB_SCHEMA = {"circuit_invoice_links": ["circuit_id", "invoice_item_id"], "cmdb_circuits": ["access", "activated", "audit_date", "ce_host", "cir", "cir_pri", "circuit_id", "circuit_name", "circuit_service_type", "circuit_termination_type", "circuit_type", "contract_end", "contract_start", "customer_id", "datacom_billing_code", "datacom_last_billing_run_date", "decommissioned", "exchange", "host", "id", "interface", "ip_pe", "ip_router", "last_updated", "linknet", "netflow", "netops_sensor_id", "notes", "pe_host", "pir", "priority", "qosprofile", "region", "review_flag", "review_notes", "review_notes_date", "service_catalogue_item_imported", "service_catalogue_item_linked_id", "service_end_date", "service_type", "site_code", "site_name", "status", "telco", "vendor_account_number", "vendor_billing_end_date", "vlan", "zeus_id"], "customers": ["id", "name"], "import_mapping_lines": ["baserow_field_name", "end_date", "field_role", "formula_template", "id", "ignore_match", "mapping_name_id", "name", "source_csv_column", "source_link_field", "source_link_table", "source_type", "start_date", "static_value", "transformation", "transformation_args"], "import_mappings": ["description", "display_order", "id", "is_active", "mapping_name", "notes", "sample_csv_first_row", "sample_csv_headers", "supplier_id"], "loggingcontrol": ["application", "description", "id", "level", "state"], "mapping_rules_metadata": ["custom_options", "default_transformation", "destination_field", "field_role", "formula_template", "id", "is_base_rule", "is_hidden", "is_required", "link_field_lookup", "link_table_lookup", "rule_name", "source_type_options", "static_value", "transformation_args"], "scheduled_backups": ["backup_name", "backup_type", "day_of_month", "day_of_week", "frequency", "id", "is_active", "last_run_status", "last_run_timestamp", "next_run_timestamp", "notes", "time_of_day"], "service_catalog_items": ["additional_info", "adjustment_percentage", "billable", "billable_quantity", "billing_name", "contract_number", "customer_id", "customer_sell_price", "customer_standard_price", "datacom_cost_price", "host_types", "id", "include_in_billing_run", "master_service_catalogue_item", "netsuite_ru_item_code", "pipeline_quantity", "service_billing_method", "service_description", "service_key", "service_line", "total_bill_price", "unit", "zeus_id"], "servicerates": ["active", "billing_type", "currency", "effective_end_date", "effective_start_date", "id", "notes", "rate_code", "rate_per_unit", "service_description", "supplier_id", "unit_of_measure"], "supplier_account": ["account_number", "id", "supplier_id"], "supplier_invoice_headers": ["account_number_id", "billing_month", "billing_month_logic", "due_date", "id", "invoice_date", "invoice_number", "supplier_id", "tax_amount", "total_amount"], "supplier_invoice_items": ["account_number_id", "audit_date", "billing_reference", "contract_end_date", "contract_start_date", "contract_term_in_months", "id", "notes", "review_flag", "supplier_id"], "supplier_invoice_lines": ["description", "end_date", "id", "invoice_header_id", "item_id", "quantity", "start_date", "total_amount", "unique_reference", "unit_price"], "suppliers": ["account_manager_email", "contact_person", "id", "name", "other_names", "override_name", "supplier_short_name", "type"]};
         const ROLE_TO_TABLE_MAP = {
@@ -254,14 +375,14 @@
             'item': 'supplier_invoice_items',
             'line': 'supplier_invoice_lines'
         };
-        const ALL_SOURCE_TYPES = ['CSV', 'CSV Formula', 'Text Override', 'Link', 'Choice', 'None'];
+        const ALL_SOURCE_TYPES = ['CSV', 'CSV Formula', 'Text Override', 'Link', 'Choice', 'Rules Formula', 'None'];
         const ALL_FIELD_ROLES = ['header', 'item', 'line', 'account', 'invoice_header_to_item_link'];
         const ALL_TRANSFORMATIONS = ['To Text', 'To Date', 'To Integer', 'To Decimal', 'To Negative', 'None'];
         let allRules = [];
         let isSuperAdmin = false;
-        
+
         // --- All JavaScript functions ---
-        
+
         function createRow(rule) {
             const row = document.createElement('tr');
             row.dataset.ruleId = rule.id || `new_${Date.now()}`;
@@ -269,20 +390,52 @@
             const fieldRolesHtml = `<select name="field_role" onchange="updateDestinationFields(this)">${ALL_FIELD_ROLES.map(role => `<option value="${role}" ${rule.field_role === role ? 'selected' : ''}>${role}</option>`).join('')}</select>`;
             const sourceTypesHtml = `<select name="source_type_options" multiple onchange="updateRowUI(this.closest('tr'))">${ALL_SOURCE_TYPES.map(type => `<option value="${type}" ${rule.source_type_options?.includes(type) ? 'selected' : ''}>${type}</option>`).join('')}</select>`;
             const transformationsHtml = `<select name="default_transformation" multiple>${ALL_TRANSFORMATIONS.map(t => `<option value="${t}" ${rule.default_transformation?.includes(t) ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+            
+            const ruleNameHtml = `
+                <div style="display: flex; align-items: center;">
+                    <span>${rule.rule_name || ''}</span>
+                    ${rule.is_required ? '<span class="required-asterisk">*</span>' : ''}
+                    ${rule.notes ? `<div class="tooltip"><span class="tooltip-icon">?</span><span class="tooltip-text">${rule.notes}</span></div>` : ''}
+                </div>
+            `;
 
             row.innerHTML = `
-                <td><input type="text" name="rule_name" value="${rule.rule_name || ''}"></td>
+                <td>${ruleNameHtml}</td>
                 <td>${fieldRolesHtml}</td>
                 <td><select name="destination_field" class="destination-field-select"></select></td>
                 <td>${sourceTypesHtml}</td>
                 <td class="source-details">
-                    <div class="link-details hidden">
+                    <div class="source-input csv-input hidden">
+                        <input type="text" name="source_csv_column" value="${rule.source_csv_column || ''}" placeholder="CSV Column Name">
+                    </div>
+                    <div class="source-input csvformula-input hidden">
+                        <textarea name="formula_template" placeholder="e.g., {Col1}-{Col2}">${rule.formula_template || ''}</textarea>
+                    </div>
+                    <div class="source-input textoverride-input hidden">
+                        <input type="text" name="static_value" value="${rule.static_value || ''}" placeholder="Static Text Value">
+                    </div>
+                    <div class="source-input link-details hidden">
                         <p>Table: <select name="link_table_lookup" class="link-table-select" onchange="updateFieldDropdown(this)"></select></p>
                         <p>Field: <select name="link_field_lookup" class="link-field-select"></select></p>
                     </div>
-                    <div class="choice-details hidden">
+                    <div class="source-input choice-details hidden">
                         <p>Choices (comma-separated):</p>
                         <textarea name="custom_options" placeholder="e.g., Choice A,Choice B">${rule.custom_options || ''}</textarea>
+                    </div>
+                     <div class="source-input rulesformula-input hidden">
+                        <div class="formula-builder">
+                            <select multiple onchange="insertFormulaPlaceholder(this, 'formula-textarea-${rule.id}')">
+                                <option value="">-- Insert Rule/Supplier Placeholder --</option>
+                                <optgroup label="Rule Outputs">
+                                    ${allRules.filter(r => r.id !== rule.id).map(r => `<option value="{Rule:${r.rule_name}}">${r.rule_name}</option>`).join('')}
+                                </optgroup>
+                                <optgroup label="Supplier Details">
+                                    <option value="{Supplier:name}">Supplier Name</option>
+                                    <option value="{Supplier:supplier_short_name}">Supplier Short Name</option>
+                                </optgroup>
+                            </select>
+                            <textarea id="formula-textarea-${rule.id}" name="rules_formula_template" placeholder="Build formula using placeholders like {Rule:Rule Name} or {Supplier:name}" onkeyup="updateRowUI(this.closest('tr'))">${rule.rules_formula_template || ''}</textarea>
+                        </div>
                     </div>
                 </td>
                 <td>${transformationsHtml}</td>
@@ -293,7 +446,7 @@
             `;
             return row;
         }
-        
+
         async function saveAllChanges() {
             const saveButton = document.getElementById('btn-save-all');
             saveButton.disabled = true;
@@ -310,7 +463,7 @@
                     else if (input.multiple) data[input.name] = Array.from(input.selectedOptions).map(opt => opt.value).join(',');
                     else data[input.name] = input.value;
                 });
-                
+
                 const url = isNew ? "/admin/mapping_rules/api/metadata" : `/admin/mapping_rules/api/metadata/0`.slice(0,-1) + ruleId;
                 const method = isNew ? 'POST' : 'PUT';
 
@@ -331,9 +484,40 @@
                     return; // Stop on first error
                 }
             }
-            
+
             alert('All changes saved successfully!');
             window.location.reload(); // Reload the page to confirm changes
+        }
+
+        async function saveNotes() {
+            const saveButton = document.querySelector('#notes-modal .button');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            const notesData = {};
+            document.querySelectorAll('#modal-rules-list textarea').forEach(textarea => {
+                const ruleId = textarea.dataset.ruleId;
+                notesData[ruleId] = textarea.value;
+            });
+            
+            try {
+                const response = await fetch("/admin/mapping_rules/api/metadata/update_notes", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(notesData)
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to save notes.');
+                }
+                alert('Notes saved successfully!');
+                closeNotesModal();
+                fetchRules(); // Reload rules to update tooltips
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Notes';
+            }
         }
 
         function fetchRules() {
@@ -344,14 +528,27 @@
                     .catch(error => { console.error("Fetch error:", error); alert("Could not load rules."); });
             } catch (error) { console.error("Error in fetchRules:", error); }
         }
+        
         function renderRules() {
             const baseBody = document.getElementById('base-rules-body');
             const additionalBody = document.getElementById('additional-rules-body');
-            baseBody.innerHTML = ''; additionalBody.innerHTML = '';
-            allRules.sort((a, b) => (a.rule_name || '').localeCompare(b.rule_name || ''));
+            baseBody.innerHTML = '';
+            additionalBody.innerHTML = '';
+            
+            allRules.sort((a, b) => {
+                if (a.is_base_rule !== b.is_base_rule) {
+                    return a.is_base_rule ? -1 : 1;
+                }
+                return (a.rule_name || '').localeCompare(b.rule_name || '');
+            });
+
             allRules.forEach(rule => {
                 const row = createRow(rule);
-                (rule.is_base_rule ? baseBody : additionalBody).appendChild(row);
+                if (rule.is_base_rule) {
+                    baseBody.appendChild(row);
+                } else {
+                    additionalBody.appendChild(row);
+                }
                 updateDestinationFields(row.querySelector('[name="field_role"]'), rule.destination_field);
                 populateTableDropdown(row.querySelector('.link-table-select'), rule.link_table_lookup);
                 const fieldSelect = row.querySelector('.link-field-select');
@@ -360,6 +557,7 @@
             });
             toggleBaseRuleEditability();
         }
+        
         function updateDestinationFields(roleSelect, selectedValue) {
             const row = roleSelect.closest('tr');
             const destSelect = row.querySelector('.destination-field-select');
@@ -371,17 +569,39 @@
             }
             destSelect.value = selectedValue;
         }
+        
         function updateRowUI(row) {
             const sourceTypeSelect = row.querySelector('[name="source_type_options"]');
             const selectedTypes = Array.from(sourceTypeSelect.selectedOptions).map(opt => opt.value);
-            row.querySelector('.link-details').classList.toggle('hidden', !selectedTypes.includes('Link'));
-            row.querySelector('.choice-details').classList.toggle('hidden', !selectedTypes.includes('Choice'));
+
+            row.querySelectorAll('.source-input').forEach(input => input.classList.add('hidden'));
+
+            if (selectedTypes.includes('CSV')) {
+                row.querySelector('.csv-input').classList.remove('hidden');
+            }
+            if (selectedTypes.includes('CSV Formula')) {
+                row.querySelector('.csvformula-input').classList.remove('hidden');
+            }
+            if (selectedTypes.includes('Text Override')) {
+                row.querySelector('.textoverride-input').classList.remove('hidden');
+            }
+            if (selectedTypes.includes('Link')) {
+                row.querySelector('.link-details').classList.remove('hidden');
+            }
+            if (selectedTypes.includes('Choice')) {
+                row.querySelector('.choice-details').classList.remove('hidden');
+            }
+            if (selectedTypes.includes('Rules Formula')) {
+                row.querySelector('.rulesformula-input').classList.remove('hidden');
+            }
+            
             const transformationSelect = row.querySelector('[name="default_transformation"]');
             if (transformationSelect) {
-                const isLinkOrChoice = selectedTypes.includes('Link') || selectedTypes.includes('Choice');
+                const isLinkOrChoice = selectedTypes.includes('Link') || selectedTypes.includes('Choice') || selectedTypes.includes('Rules Formula');
                 transformationSelect.parentElement.style.visibility = isLinkOrChoice ? 'hidden' : 'visible';
             }
         }
+        
         function populateTableDropdown(selectElement, selectedValue) {
             if (!selectElement) return;
             selectElement.innerHTML = '<option value="">-- Select Table --</option>';
@@ -389,6 +609,7 @@
             selectElement.value = selectedValue;
             updateFieldDropdown(selectElement);
         }
+        
         function updateFieldDropdown(tableSelect) {
             const row = tableSelect.closest('tr');
             const fieldSelect = row.querySelector('.link-field-select');
@@ -400,6 +621,22 @@
                 fieldSelect.value = savedValue;
             }
         }
+        
+        function insertFormulaPlaceholder(selectElement, textareaId) {
+            const textarea = document.getElementById(textareaId);
+            const selectedOptions = Array.from(selectElement.selectedOptions);
+            const newText = selectedOptions.map(option => option.value).join('');
+            
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            textarea.value = text.substring(0, start) + newText + text.substring(end);
+            selectElement.selectedIndex = -1;
+            textarea.focus();
+            updateRowUI(textarea.closest('tr'));
+        }
+        
         function addRow(isBase) {
             const newRule = { is_base_rule: isBase };
             const tableBody = isBase ? document.getElementById('base-rules-body') : document.getElementById('additional-rules-body');
@@ -410,9 +647,11 @@
             updateRowUI(newRow);
             toggleBaseRuleEditability();
         }
+        
         function deleteRow(button) {
             if (confirm('Are you sure?')) { button.closest('tr').remove(); }
         }
+        
         function toggleBaseRuleEditability() {
             isSuperAdmin = document.getElementById('chk-super-admin').checked;
             document.getElementById('btn-add-base').disabled = !isSuperAdmin;
@@ -429,6 +668,46 @@
                 }
             });
         }
+        
+        function openNotesModal() {
+            const modal = document.getElementById('notes-modal');
+            const list = document.getElementById('modal-rules-list');
+            list.innerHTML = '';
+            
+            const baseRules = allRules.filter(r => r.is_base_rule).sort((a, b) => (a.rule_name || '').localeCompare(b.rule_name || ''));
+            const additionalRules = allRules.filter(r => !r.is_base_rule).sort((a, b) => (a.rule_name || '').localeCompare(b.rule_name || ''));
+
+            function createModalListItems(rules, headerText) {
+                if (rules.length > 0) {
+                    const header = document.createElement('h4');
+                    header.textContent = headerText;
+                    list.appendChild(header);
+
+                    rules.forEach(rule => {
+                        const listItem = document.createElement('li');
+                        listItem.dataset.ruleId = rule.id;
+                        const requiredIndicator = rule.is_required ? '<span class="required-asterisk">*</span>' : '';
+                        listItem.innerHTML = `
+                            <div class="modal-rule-name">${rule.rule_name || ''}${requiredIndicator}</div>
+                            <div class="modal-rule-note">
+                                <textarea data-rule-id="${rule.id}">${rule.notes || ''}</textarea>
+                            </div>
+                        `;
+                        list.appendChild(listItem);
+                    });
+                }
+            }
+
+            createModalListItems(baseRules, 'Base Rules');
+            createModalListItems(additionalRules, 'Additional Rules');
+
+            modal.style.display = 'block';
+        }
+
+        function closeNotesModal() {
+            const modal = document.getElementById('notes-modal');
+            modal.style.display = 'none';
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchRules();
@@ -438,6 +717,5 @@
             document.getElementById('btn-save-all').addEventListener('click', saveAllChanges);
         });
     </script>
-    {% endblock %}
 </body>
 </html>

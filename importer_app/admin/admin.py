@@ -137,7 +137,7 @@ def _perform_full_db_restore(db_params, backup_filepath):
     logging.info("Terminating existing connections and dropping database...")
     _run_subprocess_command(disconnect_cmd, "Failed to terminate connections")
     _run_subprocess_command(drop_db_cmd, "Failed to drop database")
-    logging.info("Database dropped. Creating new database...")
+    logging.info("New database created. Starting restore...")
     _run_subprocess_command(create_db_cmd, "Failed to create database")
     logging.info("New database created. Starting restore...")
     _run_subprocess_command(restore_cmd, "psql restore command failed")
@@ -329,10 +329,10 @@ def admin_dashboard():
         flash(f"Error listing configuration export files: {e}", "error")
         logging.error(f"Error listing config export files: {traceback.format_exc()}")
     return render_template("admin.html",
-                           db_backup_files=db_backup_files,
-                           app_backup_files=app_backup_files,
-                           config_export_files=config_export_files
-                           )
+                            db_backup_files=db_backup_files,
+                            app_backup_files=app_backup_files,
+                            config_export_files=config_export_files
+                            )
 
 @admin_bp.route("/init_db", methods=["POST"])
 def init_db_route():
@@ -586,3 +586,130 @@ def delete_selected_app_backups():
         for error in errors:
             flash(error, "error")
     return redirect(url_for('admin.admin_dashboard'))
+
+# --- App Documentation Routes ---
+@admin_bp.route("/app_documentation")
+def app_documentation():
+    """
+    Renders a page displaying documentation for the application's files and logic.
+    """
+    documentation_entries = []
+    try:
+        with DBClient() as client:
+            # Changed 'file_name' to 'title' to match the updated schema
+            documentation_entries = client.get_rows("app_documentation", order_by="display_order, title")
+    except Exception as e:
+        flash("Could not load app documentation.", "error")
+        logging.error(f"Failed to fetch app documentation: {traceback.format_exc()}")
+    
+    return render_template("app_documentation.html", documentation_entries=documentation_entries)
+
+@admin_bp.route("/app_documentation/api/docs", methods=["GET"])
+def get_all_docs():
+    """Fetches all documentation entries."""
+    try:
+        with DBClient() as client:
+            # Changed 'file_name' to 'title' to match the updated schema
+            docs = client.get_rows("app_documentation", order_by="display_order, title")
+            return jsonify(docs)
+    except Exception as e:
+        logging.error(f"Error fetching documentation: {e}", exc_info=True)
+        return jsonify({"message": "Failed to fetch documentation", "error": str(e)}), 500
+
+@admin_bp.route("/app_documentation/api/docs", methods=["POST"])
+def create_doc_entry():
+    """Creates a new documentation entry."""
+    data = request.json
+    if not data:
+        return jsonify({"message": "No data provided"}), 400
+
+    # 'title' is now the generic name for headings, subheadings, and files
+    required_fields = ["title", "body", "type"]
+    for field in required_fields:
+        if field not in data or data[field] is None: # Allow empty string for body if needed, but not None
+            return jsonify({"message": f"Missing required field: {field}"}), 400
+
+    try:
+        with DBClient() as client:
+            # Add created_at and updated_at timestamps
+            data['created_at'] = datetime.now()
+            data['updated_at'] = datetime.now()
+
+            # Ensure parent_id is an integer or None
+            if 'parent_id' in data and data['parent_id'] is not None:
+                try:
+                    data['parent_id'] = int(data['parent_id'])
+                except ValueError:
+                    return jsonify({"message": "Invalid parent_id format. Must be an integer or null."}), 400
+            else:
+                data['parent_id'] = None # Explicitly set to None if not provided
+
+            # Handle related_files as a JSON string
+            if 'related_files' in data and data['related_files'] is not None:
+                # Assuming frontend sends it as a comma-separated string, convert to JSON string if needed
+                # If frontend sends it as JSON string already, no change needed here.
+                # For this implementation, we assume it's already a JSON string from the frontend (from the .map(f=>f.trim()) logic)
+                pass
+            else:
+                data['related_files'] = None
+
+            new_entry = client.create_row("app_documentation", data)
+            return jsonify(new_entry), 201
+    except Exception as e:
+        logging.error(f"Error creating documentation entry: {e}", exc_info=True)
+        return jsonify({"message": "Failed to create documentation entry", "error": str(e)}), 500
+
+@admin_bp.route("/app_documentation/api/docs/<int:doc_id>", methods=["PUT"])
+def update_doc_entry(doc_id):
+    """Updates an existing documentation entry."""
+    data = request.json
+    if not data:
+        return jsonify({"message": "No data provided"}), 400
+
+    try:
+        with DBClient() as client:
+            # Update updated_at timestamp
+            data['updated_at'] = datetime.now()
+
+            # Ensure parent_id is an integer or None
+            if 'parent_id' in data and data['parent_id'] is not None:
+                try:
+                    data['parent_id'] = int(data['parent_id'])
+                except ValueError:
+                    return jsonify({"message": "Invalid parent_id format. Must be an integer or null."}), 400
+            else:
+                data['parent_id'] = None # Explicitly set to None if not provided
+
+            # Handle related_files as a JSON string
+            if 'related_files' in data and data['related_files'] is not None:
+                # Assuming frontend sends it as a comma-separated string, convert to JSON string if needed
+                # If frontend sends it as JSON string already, no change needed here.
+                pass
+            else:
+                data['related_files'] = None
+
+            client.update_row("app_documentation", doc_id, data)
+            updated_entry = client.get_row_by_id("app_documentation", doc_id)
+            return jsonify(updated_entry), 200
+    except Exception as e:
+        logging.error(f"Error updating documentation entry {doc_id}: {e}", exc_info=True)
+        return jsonify({"message": "Failed to update documentation entry", "error": str(e)}), 500
+
+@admin_bp.route("/app_documentation/api/docs/<int:doc_id>", methods=["DELETE"])
+def delete_doc_entry(doc_id):
+    """Deletes a documentation entry. If it's a heading or subheading,
+    it also deletes all its children due to ON DELETE CASCADE in schema."""
+    try:
+        with DBClient() as client:
+            # Check the type of the entry to be deleted
+            entry_to_delete = client.get_row_by_id("app_documentation", doc_id)
+            if not entry_to_delete:
+                return jsonify({"message": "Entry not found"}), 404
+
+            # Due to ON DELETE CASCADE in the schema, deleting the parent will automatically
+            # delete all its children. We just need to delete the top-level entry.
+            client.delete_row("app_documentation", doc_id)
+            return jsonify({"message": "Documentation entry and its children (if any) deleted successfully"}), 200
+    except Exception as e:
+        logging.error(f"Error deleting documentation entry {doc_id}: {e}", exc_info=True)
+        return jsonify({"message": "Failed to delete documentation entry", "error": str(e)}), 500

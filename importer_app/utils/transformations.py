@@ -1,47 +1,63 @@
+# In utils/transformations.py
+
 import pandas as pd
 import logging
-from db_client import DBClient
+from db_client import DBClient # Assuming this is correctly imported and used elsewhere
 
 def apply_transformation(value, transformation):
     """
-    Applies a data type transformation to a given value, combining logic
-    from both previous versions for robustness.
+    Applies a data type transformation to a given value.
+    Returns the transformed value or None if transformation is not applicable/fails.
     """
     if pd.isna(value) or value is None:
         return None # Return None to represent NULL in the database
 
-    t = (transformation or 'none').replace(" ", "").lower()
+    # Split transformation string into type and optional argument
+    parts = (transformation or 'none').replace(" ", "").lower().split(':', 1)
+    t_type = parts[0]
+    t_arg = parts[1] if len(parts) > 1 else None
 
-    if t == "none":
-        return value
-    if t == "totext":
-        return str(value)
-    if t == "tointeger":
-        try:
-            return int(float(value))
-        except (ValueError, TypeError):
-            return None
-    if t == "todecimal":
-        try:
-            # Use rounding to ensure consistent decimal places
-            return round(float(value), 2)
-        except (ValueError, TypeError):
-            return None
-    if t in ["todate", "todate(iso)"]:
-        try:
-            # FIX: Explicitly specify the format to correctly parse YYYY/MM/DD dates
-            # and avoid the UserWarning.
-            dt = pd.to_datetime(value, format="%Y/%m/%d", errors="coerce")
-            return dt.strftime("%Y-%m-%d") if pd.notna(dt) else None
-        except Exception:
-            return None
-    if t == 'tonegative':
-        try:
-            return -abs(float(value))
-        except (ValueError, TypeError):
-            return None
-            
-    return value
+    try:
+        if t_type == "none":
+            return value
+        elif t_type == "totext":
+            return str(value)
+        elif t_type == "tointeger":
+            try:
+                return int(float(value))
+            except (ValueError, TypeError):
+                return None # Return None on conversion failure
+        elif t_type == "todecimal":
+            try:
+                # Use rounding to ensure consistent decimal places
+                return round(float(value), 2)
+            except (ValueError, TypeError):
+                return None # Return None on conversion failure
+        elif t_type == "todate":
+            try:
+                # Handle various date formats here if needed, using t_arg
+                # For now, stick to the format specified in your current code
+                if t_arg: # If a specific format is provided, use it
+                    dt = datetime.strptime(str(value).split(' ')[0], t_arg)
+                else: # Default to YYYY/MM/DD if no arg, or try common formats
+                    dt = pd.to_datetime(value, errors="coerce") # pandas can infer
+                return dt.strftime("%Y-%m-%d") if pd.notna(dt) else None
+            except Exception:
+                return None # Return None on date parsing failure
+        elif t_type == 'tonegative':
+            try:
+                return -abs(float(value))
+            except (ValueError, TypeError):
+                return None # Return None on conversion failure
+        # Add more transformation types here as needed
+        # For any unhandled transformation type, return the original value or None
+        else:
+            logging.warning(f"Unhandled transformation type: {t_type}. Returning original value.")
+            return value # Or return None, depending on desired behavior
+
+    except Exception as e:
+        logging.error(f"Error applying transformation '{transformation}' to value '{value}': {e}", exc_info=True)
+        return None # Return None on unexpected errors during transformation
 
 def get_link_row_id(client: DBClient, table_name: str, field_name: str, field_value, supplier_id: int = None):
     """

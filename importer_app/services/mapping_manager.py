@@ -197,9 +197,15 @@ def manage_mapping_lines(mapping_id):
 
 @mapping_manager_bp.route("/mappings/lines/save_set", methods=["POST"])
 def save_mapping_lines_set():
+    """
+    Saves mapping details and adds NEW mapping lines.
+    Existing mapping lines are NOT updated by this function.
+    Ignore rules are always fully replaced.
+    """
     mapping_id = request.form.get('mapping_id')
     try:
         with DBClient() as client:
+            # 1. Update the main mapping metadata
             mapping_details_data = {
                 'mapping_name': request.form.get('mapping_name'),
                 'description': request.form.get('description')
@@ -207,8 +213,8 @@ def save_mapping_lines_set():
             if mapping_details_data.get('mapping_name'):
                 client.update_row("import_mappings", int(mapping_id), mapping_details_data)
 
-            delete_sql = "DELETE FROM import_mapping_lines WHERE mapping_name_id = %s AND field_role = 'Ignore Rule'"
-            client._execute_query(delete_sql, (mapping_id,))
+            # 2. Handle Ignore Rules: Delete all existing and re-create from form
+            client.delete_row_where("import_mapping_lines", "mapping_name_id = %s AND field_role = 'Ignore Rule'", (mapping_id,))
 
             form_rules = {}
             for key, value in request.form.items():
@@ -233,20 +239,76 @@ def save_mapping_lines_set():
                     rule_data = {
                         'source_type': data.get('source_type'), 'source_csv_column': data.get('source_csv_column'),
                         'formula_template': data.get('formula_template'), 'static_value': data.get('static_value'),
-                        'transformation': data.get('transformation'), 'transformation_args': data.get('transformation_args')
+                        'transformation': data.get('transformation'), 'transformation_args': data.get('transformation_args'),
+                        'name': data.get('name'), # Ensure name and field_role are passed for new lines
+                        'field_role': data.get('field_role')
                     }
                     
-                    if str(line_id).startswith('new_'):
-                        rule_data.update({'mapping_name_id': mapping_id, 'name': data.get('name'), 'field_role': data.get('field_role')})
+                    if str(line_id).startswith('new_'): # Only create new lines
+                        rule_data['mapping_name_id'] = mapping_id
                         client.create_row('import_mapping_lines', rule_data)
-                    else:
-                        client.update_row('import_mapping_lines', line_id, rule_data)
+                    # IMPORTANT: No 'else' block here to update existing lines.
+                    # Existing lines are only updated via the reset_all_mapping_lines endpoint.
 
-            flash("Mapping rule set saved successfully!", "success")
+            flash("Mapping details and new lines saved successfully!", "success")
     except Exception as e:
-        flash(f"Could not save mapping rule set. Error: {e}", "error")
-        logging.error(f"Failed to save mapping rule set: {traceback.format_exc()}")
+        flash(f"Could not save mapping details or new lines. Error: {e}", "error")
+        logging.error(f"Failed to save mapping lines set: {traceback.format_exc()}")
     return redirect(url_for('mapping_manager.manage_mapping_lines', mapping_id=mapping_id))
+
+
+@mapping_manager_bp.route("/mappings/lines/reset_all_lines", methods=["POST"])
+def reset_all_mapping_lines():
+    """
+    Deletes all existing mapping lines for a given mapping_id and
+    then inserts all lines provided in the request as new.
+    This is the explicit 'reset' action for mapping lines.
+    """
+    mapping_id = request.form.get('mapping_id')
+    if not mapping_id:
+        return jsonify({"status": "error", "message": "Mapping ID is required for reset."}), 400
+
+    try:
+        with DBClient() as client:
+            # 1. Delete all existing non-ignore mapping lines for this mapping
+            # We explicitly exclude 'Ignore Rule' because they are handled separately by save_mapping_lines_set
+            client.delete_row_where("import_mapping_lines", "mapping_name_id = %s AND field_role != 'Ignore Rule'", (mapping_id,))
+
+            form_rules = {}
+            for key, value in request.form.items():
+                if '.' in key:
+                    prefix, field = key.rsplit('.', 1)
+                    if prefix not in form_rules:
+                        form_rules[prefix] = {}
+                    form_rules[prefix][field] = value
+
+            lines_to_insert = []
+            for prefix, data in form_rules.items():
+                # Only process actual mapping lines, not ignore rules or other form fields
+                if 'id' in data and not prefix.startswith('ignore_rule'):
+                    line_data = {
+                        'mapping_name_id': mapping_id,
+                        'name': data.get('name'),
+                        'field_role': data.get('field_role'),
+                        'source_type': data.get('source_type'),
+                        'source_csv_column': data.get('source_csv_column'),
+                        'formula_template': data.get('formula_template'),
+                        'static_value': data.get('static_value'),
+                        'transformation': data.get('transformation'),
+                        'transformation_args': data.get('transformation_args')
+                    }
+                    lines_to_insert.append(line_data)
+            
+            # 2. Insert all provided lines as new entries
+            for line in lines_to_insert:
+                client.create_row('import_mapping_lines', line)
+
+            flash("Mapping lines have been successfully reset and updated!", "success")
+            return jsonify({"status": "success", "message": "Mapping lines reset."})
+
+    except Exception as e:
+        logging.error(f"Error resetting mapping lines for mapping {mapping_id}: {traceback.format_exc()}")
+        return jsonify({"status": "error", "message": f"Failed to reset mapping lines. Error: {e}"}), 500
 
 
 @mapping_manager_bp.route("/mappings/lines/save_sample_data", methods=["POST"])
@@ -270,12 +332,12 @@ def save_sample_data():
         logging.error(f"Failed to save sample data for mapping {mapping_id}: {traceback.format_exc()}")
         return jsonify({"status": "error", "message": "Failed to save sample data."}), 500
             
+
 @mapping_manager_bp.route("/api/transform_preview", methods=["POST"])
 def transform_preview():
     """
     Takes a raw value, transformation details, and destination field,
     then returns a preview of the output along with a validation check.
-    This version correctly formats the transformation argument before calling the helper.
     """
     data = request.json
     raw_value = data.get('raw_value')
@@ -283,6 +345,58 @@ def transform_preview():
     transformation_args = data.get('transformation_args')
     destination_field = data.get('destination_field')
     field_role = data.get('field_role')
+    
+    # If raw_value is None or transformation is None, return gracefully
+    if raw_value is None or transformation is None:
+        return jsonify({
+            "transformed_value": str(raw_value or ''), # Ensure it's a string, even if empty
+            "validation_status": 'ok',
+            "validation_message": 'No value or transformation to preview.'
+        })
+
+    transformed_value = None
+    try:
+        # Combine transformation and args as expected by apply_transformation
+        full_transformation_string = f"{transformation}:{transformation_args}" if transformation_args else transformation
+        
+        # Call the transformation function
+        transformed_value = apply_transformation(raw_value, full_transformation_string)
+
+    except Exception as e:
+        logging.warning(f"Transformation failed during preview: {e}")
+        return jsonify({
+            "transformed_value": str(raw_value or ''), # Return raw value on transformation error
+            "validation_status": 'error',
+            "validation_message": f"Transformation Error: {e}"
+        })
+
+    # Ensure transformed_value is converted to a string for JSON response
+    # Handle None explicitly so it doesn't become "None" string if you want empty
+    display_value = str(transformed_value) if transformed_value is not None else ''
+
+    # Step 2: Validate the successfully transformed value against the database schema.
+    validation_result = {'status': 'ok', 'message': 'Value is valid.'} # Default to valid
+    table_map = {
+        'header': 'supplier_invoice_headers', 'line': 'supplier_invoice_lines',
+        'item': 'supplier_invoice_items', 'account': 'supplier_account'
+    }
+    table_name = table_map.get(field_role)
+    
+    if table_name and destination_field:
+        try:
+            with DBClient() as client:
+                schema_info = get_schema_info(client, table_name, destination_field)
+                # Pass the potentially None or empty string value to validate_value
+                validation_result = validate_value(transformed_value, schema_info)
+        except Exception as e:
+            logging.error(f"Validation failed during preview: {e}", exc_info=True)
+            validation_result = {'status': 'warning', 'message': 'Could not perform validation due to backend error.'}
+
+    return jsonify({
+        "transformed_value": display_value, # Use the prepared display_value
+        "validation_status": validation_result.get('status'),
+        "validation_message": validation_result.get('message')
+    })
     
     if raw_value is None or transformation is None:
         return jsonify({

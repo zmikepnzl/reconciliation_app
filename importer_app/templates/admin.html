@@ -112,6 +112,16 @@
     <hr>
 
     <div class="form-section">
+        <h4>App Documentation</h4>
+        <p style="font-size: 0.9em; color: #777;">View documentation for application files, modules, and their relationships.</p>
+        <div class="button-group">
+            <a href="{{ url_for('admin.app_documentation') }}" class="button">View App Documentation</a>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="form-section">
         <h4>Run Custom SQL Script</h4>
         <p style="font-size: 0.9em; color: #777;">Upload and execute a custom SQL script directly against the database. Use with extreme caution!</p>
         <form action="{{ url_for('admin.run_sql_script') }}" method="POST" enctype="multipart/form-data" onsubmit="return confirm('WARNING: This will execute the uploaded SQL file directly against your database. Are you absolutely sure you want to proceed?');">
@@ -194,7 +204,7 @@
         <h5>Available Application Backups</h5>
         <form id="app-backup-delete-form" action="{{ url_for('admin.delete_selected_app_backups') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the selected application backup files? This action cannot be undone.');">
             <table class="file-table">
-                 <thead>
+                <thead>
                     <tr>
                         <th style="width: 5%;">
                             <input type="checkbox" id="select-all-app-backups" data-target="app-backup-item">
